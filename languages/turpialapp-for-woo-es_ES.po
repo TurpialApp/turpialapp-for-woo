@@ -1,0 +1,122 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Turpial App for WooCommerce\n"
+"POT-Creation-Date: 2025-03-25 13:46-0400\n"
+"PO-Revision-Date: 2025-03-25 13:48-0400\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.5\n"
+"X-Poedit-Basepath: .\n"
+"X-Poedit-Flags-xgettext: --add-comments=translators:\n"
+"X-Poedit-WPHeader: turpialapp-for-woo.php\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;esc_attr_e;"
+"esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;_n_noop:1,2;_nx_noop:3c,1,2;"
+"__ngettext_noop:1,2\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.min.js\n"
+
+#: turpialapp-for-woo.php:36
+msgid "Turpial APP"
+msgstr "Turpial APP"
+
+#: turpialapp-for-woo.php:58
+msgid "Access Token"
+msgstr "Token de Acceso"
+
+#: turpialapp-for-woo.php:63
+msgid "Store/Warehouse S-ID"
+msgstr "ID de Tienda/Almacén"
+
+#: turpialapp-for-woo.php:68
+msgid "User/Employee T-ID"
+msgstr "ID de Usuario/Empleado"
+
+#: turpialapp-for-woo.php:73
+msgid "Fiscal Printer"
+msgstr "Impresora Fiscal"
+
+#: turpialapp-for-woo.php:78
+msgid "Cronjob Time in Minutes for Stock and Inventory Update"
+msgstr "Tiempo de Cronjob en Minutos para Actualización de Stock e Inventario"
+
+#: turpialapp-for-woo.php:83
+msgid "Automatically send orders as invoices once payment is validated."
+msgstr "Enviar automáticamente los pedidos como facturas una vez que se valide el pago."
+
+#: turpialapp-for-woo.php:85
+msgid "Send orders as invoices to Turpial"
+msgstr "Enviar pedidos como facturas a Turpial"
+
+#: turpialapp-for-woo.php:89
+msgid "Start date for exporting orders (Format YYYY-MM-DD)"
+msgstr "Fecha de inicio para exportar pedidos (Formato AAAA-MM-DD)"
+
+#: turpialapp-for-woo.php:94
+msgid "Debug"
+msgstr "Depurar"
+
+#: turpialapp-for-woo.php:96
+msgid "Activate log"
+msgstr "Activar registro"
+
+#: turpialapp-for-woo.php:106
+msgid "Payment Method for"
+msgstr "Método de Pago para"
+
+#: turpialapp-for-woo.php:108 turpialapp-for-woo.php:113
+msgid "Select one after saving your access token"
+msgstr "Selecciona uno después de guardar tu token de acceso"
+
+#: turpialapp-for-woo.php:1032
+msgid "Turpial APP Invoice"
+msgstr "Factura de Turpial APP"
+
+#: turpialapp-for-woo.php:1047
+msgid "Invoice UUID"
+msgstr "UUID de la Factura"
+
+#: turpialapp-for-woo.php:1048
+msgid "View Invoice"
+msgstr "Ver Factura"
+
+#: turpialapp-for-woo.php:1053
+msgid "Create Invoice"
+msgstr "Crear Factura"
+
+#: turpialapp-for-woo.php:1086
+msgid "Error creating the invoice"
+msgstr "Error al crear la factura"
+
+#: turpialapp-for-woo.php:1092
+msgid "Connection error"
+msgstr "Error de conexión"
+
+#: turpialapp-for-woo.php:1108
+msgid "Insufficient permissions"
+msgstr "Permisos insuficientes"
+
+#: turpialapp-for-woo.php:1114
+msgid "Invalid order ID"
+msgstr "ID de pedido inválido"
+
+#. Plugin Name of the plugin/theme
+msgid "Turpial App for WooCommerce"
+msgstr "Turpial App para WooCommerce"
+
+#. Plugin URI of the plugin/theme
+#. Author URI of the plugin/theme
+msgid "https://turpial.app/"
+msgstr "https://turpial.app/"
+
+#. Description of the plugin/theme
+msgid "Export Orders to TurpialApp"
+msgstr "Exportar Pedidos a TurpialApp"
+
+#. Author of the plugin/theme
+msgid "Kijam López"
+msgstr "Kijam López"

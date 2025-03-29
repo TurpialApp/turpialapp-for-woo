@@ -1,0 +1,12 @@
+{
+  "name": "turpialapp-for-woo",
+  "version": "1.0.0",
+  "description": "TurpialApp for WooCommerce",
+  "scripts": {
+    "watch": "nodemon --watch . --ext php --ignore vendor/ --exec \"composer run fix-cs\""
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "chokidar": "^3.6.0"
+  }
+} 

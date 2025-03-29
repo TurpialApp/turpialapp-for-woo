@@ -1,0 +1,23 @@
+{
+    "name": "turpialapp/turpialapp-for-woo",
+    "description": "TurpialApp for WooCommerce",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.12",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "wp-coding-standards/wpcs": "^3.1",
+        "phpcompatibility/phpcompatibility-wp": "^2.1"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "scripts": {
+        "phpcs": "phpcs",
+        "phpcbf": "phpcbf",
+        "check-cs": "phpcs .",
+        "fix-cs": "phpcbf ."
+    }
+}
