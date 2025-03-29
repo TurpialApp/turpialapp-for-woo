@@ -46,12 +46,6 @@ TurpialApp_For_Woo::init();
 /**
  * Load plugin text domain for translations
  */
-add_action(
-	'init',
-	function () {
-		$locale = apply_filters( 'plugin_locale', get_locale(), 'turpialapp-for-woo' );
-
-		load_textdomain( 'turpialapp-for-woo', trailingslashit( WP_LANG_DIR ) . 'turpialapp-for-woo/turpialapp-for-woo-' . $locale . '.mo' );
-		load_plugin_textdomain( 'turpialapp-for-woo', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
-	}
-);
+$turpialapp_locale = apply_filters( 'plugin_locale', get_locale(), 'turpialapp-for-woo' );
+load_textdomain( 'turpialapp-for-woo', trailingslashit( WP_LANG_DIR ) . 'turpialapp-for-woo/turpialapp-for-woo-' . $turpialapp_locale . '.mo' );
+load_plugin_textdomain( 'turpialapp-for-woo', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
