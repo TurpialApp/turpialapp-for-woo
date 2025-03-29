@@ -29,7 +29,7 @@ add_action(
 
 		add_meta_box(
 			'turpialapp_invoice_metabox',
-			esc_html__( 'Turpial APP Invoice', 'turpialapp-for-woo' ),
+			esc_html__( 'Turpial App Invoice', 'turpialapp-for-woo' ),
 			'turpialapp_invoice_metabox_content',
 			$screen,
 			'side',

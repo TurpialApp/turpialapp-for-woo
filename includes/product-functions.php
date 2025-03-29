@@ -24,8 +24,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array|null Found product data array or null if not found/error.
  */
 function turpialapp_search_product_by_sku( $sku ) {
-	$setting   = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_product_' . $sku . '_' . $key;
 	$cache     = get_transient( $cache_key );
 	if ( $cache ) {
@@ -82,8 +84,10 @@ function turpialapp_search_product_by_sku( $sku ) {
  * @return string|null UUID of the attribute or null on error.
  */
 function turpialapp_get_create_attribute( $attribute_group, $value ) {
-	$setting              = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-	$key                  = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_group_key      = 'wc_tapp_attribute_group_' . $attribute_group . '_' . $key;
 	$cache_value_key      = 'wc_tapp_attribute_group_' . $attribute_group . '_' . $value . '_' . $key;
 	$cache_group          = get_transient( $cache_group_key );

@@ -21,8 +21,8 @@ msgstr ""
 "X-Poedit-SearchPathExcluded-0: *.min.js\n"
 
 #: turpialapp-for-woo.php:36
-msgid "Turpial APP"
-msgstr "Turpial APP"
+msgid "Turpial App"
+msgstr "Turpial App"
 
 #: turpialapp-for-woo.php:58
 msgid "Access Token"
@@ -73,8 +73,8 @@ msgid "Select one after saving your access token"
 msgstr "Selecciona uno después de guardar tu token de acceso"
 
 #: turpialapp-for-woo.php:1032
-msgid "Turpial APP Invoice"
-msgstr "Factura de Turpial APP"
+msgid "Turpial App Invoice"
+msgstr "Factura de Turpial App"
 
 #: turpialapp-for-woo.php:1047
 msgid "Invoice UUID"

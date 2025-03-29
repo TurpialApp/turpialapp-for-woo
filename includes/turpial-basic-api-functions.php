@@ -20,8 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array|null Array of currencies or null on error.
  */
 function turpialapp_get_all_currencies() {
-	$setting   = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_currencies_' . $key;
 	$cache     = get_transient( $cache_key );
 	if ( $cache ) {
@@ -61,9 +63,10 @@ function turpialapp_get_all_currencies() {
  * @return array|null Array of payment methods or null on error.
  */
 function turpialapp_get_all_payment_methods() {
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_payment_method_' . $key;
 	$cache     = get_transient( $cache_key );
 	if ( $cache ) {
@@ -118,9 +121,10 @@ function turpialapp_get_all_payment_method_for_select() {
  * @return array|null Array of printer documents or null on error.
  */
 function turpialapp_get_all_printer_documents() {
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_printer_document_' . $key;
 	$cache     = get_transient( $cache_key );
 	if ( $cache ) {
@@ -176,9 +180,10 @@ function turpialapp_get_all_printer_documents_options() {
  * @return array|null Array of taxes or null on error.
  */
 function turpialapp_get_all_taxes() {
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_taxes_' . $key;
 	$cache     = get_transient( $cache_key );
 	if ( $cache ) {

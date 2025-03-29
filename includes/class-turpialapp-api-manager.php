@@ -50,7 +50,7 @@ class TurpialApp_API_Manager extends WC_Integration {
 
 		$this->id           = 'turpialapp-for-woo-manager';
 		$this->has_fields   = false;
-		$this->method_title = __( 'Turpial APP', 'turpialapp-for-woo' );
+		$this->method_title = __( 'Turpial App', 'turpialapp-for-woo' );
 
 		// Hook to process admin options when settings are updated.
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'process_admin_options' ) );

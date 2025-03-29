@@ -42,3 +42,20 @@ function turpialapp_log( $log, $level = '' ) {
 		$logger->$level( is_string( $log ) ? $log : wp_json_encode( $log, JSON_PRETTY_PRINT ), $context );
 	}
 }
+
+/**
+ * Generates a key from the access token
+ *
+ * @since 1.0.0
+ * @return string Key generated from the access token
+ */
+function turpialapp_access_token_key() {
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+
+	if ( ! isset( $setting['access_token'] ) ) {
+		return null;
+	}
+
+	$key = substr( md5( $setting['access_token'] ), 0, 8 );
+	return $key;
+}

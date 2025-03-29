@@ -21,8 +21,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array|null Found customer data or null if not found.
  */
 function turpialapp_search_customer_by_email( $email ) {
-	$setting   = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_customer_' . md5( $email ) . '_' . $key;
 	$cache     = get_transient( $cache_key );
 	if ( $cache ) {
@@ -71,8 +73,10 @@ function turpialapp_search_customer_by_email( $email ) {
  * @return array|null Created/found customer data or null on error.
  */
 function turpialapp_get_or_export_customer( $name, $dni, $company, $vat_company, $email, $phone, $address, $city, $state, $postcode, $country ) {
-	$setting   = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
-	$key       = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = turpialapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
 	$cache_key = 'wc_tapp_customer_' . md5( $email ) . '_' . $key;
 	$customer  = turpialapp_search_customer_by_email( $email );
 	if ( $customer ) {

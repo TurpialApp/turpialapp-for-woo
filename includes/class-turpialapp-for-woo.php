@@ -22,14 +22,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class TurpialApp_For_Woo {
 	/**
-	 * Constructor for the main plugin class
+	 * Initialize the main plugin class
 	 *
 	 * Initializes plugin hooks and filters
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
-	public function __construct() {
+	public static function init() {
 		// Add custom action links to the plugin settings page.
 		add_filter(
 			'plugin_action_links_' . plugin_basename( plugin_dir_path( __DIR__ ) . 'turpialapp-for-woo.php' ),
@@ -41,43 +41,32 @@ class TurpialApp_For_Woo {
 			}
 		);
 
-		// Register activation and deactivation hooks.
-		register_activation_hook( plugin_dir_path( __DIR__ ) . 'turpialapp-for-woo.php', array( self::class, 'activate' ) );
+		// Add TurpialApp integration to WooCommerce.
+		add_action(
+			'plugins_loaded',
+			function () {
+				if ( ! class_exists( 'WC_Integration' ) ) {
+					return;
+				}
+
+				// Add the integration to WooCommerce.
+				add_filter(
+					'woocommerce_integrations',
+					function ( $integrations ) {
+						require_once __DIR__ . '/class-turpialapp-api-manager.php';
+						$integrations[] = 'TurpialApp_API_Manager';
+						return $integrations;
+					}
+				);
+			}
+		);
+
 		register_deactivation_hook( plugin_dir_path( __DIR__ ) . 'turpialapp-for-woo.php', array( self::class, 'deactivate' ) );
 
 		// Initialize cron jobs.
 		self::init_cron_jobs();
 	}
 
-	/**
-	 * Initialize the plugin
-	 *
-	 * Sets up initial plugin configuration and schedules
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public function init() {
-		// Schedule the stock update event upon plugin activation.
-		if ( ! wp_next_scheduled( 'turpialapp_update_stock_from_api' ) ) {
-			wp_schedule_single_event( time() + 10, 'turpialapp_update_stock_from_api' );
-		}
-	}
-
-	/**
-	 * Plugin activation handler
-	 *
-	 * Runs when plugin is activated to set up required schedules and configurations
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function activate() {
-		// Schedule the stock update event upon plugin activation.
-		if ( ! wp_next_scheduled( 'turpialapp_update_stock_from_api' ) ) {
-			wp_schedule_single_event( time() + 10, 'turpialapp_update_stock_from_api' );
-		}
-	}
 
 	/**
 	 * Plugin deactivation handler
@@ -102,23 +91,18 @@ class TurpialApp_For_Woo {
 	 * @return void
 	 */
 	private static function init_cron_jobs() {
+		// Schedule the stock update event upon plugin activation.
+		if ( ! wp_next_scheduled( 'turpialapp_update_stock_from_api' ) ) {
+			wp_schedule_single_event( time() + HOUR_IN_SECONDS, 'turpialapp_update_stock_from_api' );
+		}
+
 		// Schedule the order export event to run hourly.
-		add_action(
-			'init',
-			function () {
-				if ( ! wp_next_scheduled( 'turpialapp_export_orders_cron' ) ) {
-					wp_schedule_event( time(), 'hourly', 'turpialapp_export_orders_cron' );
-				}
-			}
-		);
+		if ( ! wp_next_scheduled( 'turpialapp_export_orders_cron' ) ) {
+			wp_schedule_single_event( time() + HOUR_IN_SECONDS, 'turpialapp_export_orders_cron' );
+		}
 
 		// Register cron callbacks.
 		add_action( 'turpialapp_update_stock_from_api', 'turpialapp_update_stock_from_api' );
-		add_action(
-			'turpialapp_export_orders_cron',
-			function () {
-				turpialapp_export_orders();
-			}
-		);
+		add_action( 'turpialapp_export_orders_cron', 'turpialapp_export_orders' );
 	}
 }
