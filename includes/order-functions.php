@@ -234,7 +234,8 @@ function turpialapp_export_order( $order ) {
 		),
 		'info'
 	);
-	$result = wp_remote_post(
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$result  = wp_remote_post(
 		TURPIAL_APP_ENDPOINT . '/invoices/preview',
 		array(
 			'headers' => array(

@@ -30,6 +30,8 @@ function turpialapp_get_all_currencies() {
 		return 'error' === $cache ? array() : $cache; // Return cached currencies if available.
 	}
 
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+
 	$result = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/currencies',
 		array(
@@ -72,8 +74,10 @@ function turpialapp_get_all_payment_methods() {
 	if ( $cache ) {
 		return 'error' === $cache ? null : $cache; // Return cached payment methods if available.
 	}
-	$result = wp_remote_get(
-		TURPIAL_APP_ENDPOINT . '/get_payment_methods?limit=100&page=1',
+
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$result  = wp_remote_get(
+		TURPIAL_APP_ENDPOINT . '/payment_methods?limit=100&page=1',
 		array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $setting['access_token'],
@@ -89,7 +93,7 @@ function turpialapp_get_all_payment_methods() {
 	$decoded = json_decode( $result['body'], true );
 
 	if ( isset( $decoded['rows'] ) && count( $decoded['rows'] ) > 0 ) {
-		set_transient( $cache_key, $decoded['rows'], 3600 ); // Cache payment methods for 1 hour.
+		set_transient( $cache_key, $decoded['rows'], 600 ); // Cache payment methods for 1 hour.
 		return $decoded['rows'];
 	}
 
@@ -130,8 +134,10 @@ function turpialapp_get_all_printer_documents() {
 	if ( $cache ) {
 		return 'error' === $cache ? null : $cache; // Return cached payment methods if available.
 	}
-	$result = wp_remote_get(
-		TURPIAL_APP_ENDPOINT . '/get_printer_documents?limit=100&page=1',
+
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$result  = wp_remote_get(
+		TURPIAL_APP_ENDPOINT . '/printer_documents?limit=100&page=1',
 		array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $setting['access_token'],
@@ -147,7 +153,7 @@ function turpialapp_get_all_printer_documents() {
 	$decoded = json_decode( $result['body'], true );
 
 	if ( isset( $decoded['rows'] ) && count( $decoded['rows'] ) > 0 ) {
-		set_transient( $cache_key, $decoded['rows'], 3600 ); // Cache payment methods for 1 hour.
+		set_transient( $cache_key, $decoded['rows'], 600 ); // Cache payment methods for 1 hour.
 		return $decoded['rows'];
 	}
 
@@ -189,7 +195,9 @@ function turpialapp_get_all_taxes() {
 	if ( $cache ) {
 		return 'error' === $cache ? null : $cache; // Return cached taxes if available.
 	}
-	$result = wp_remote_get(
+
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$result  = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/taxes',
 		array(
 			'headers' => array(
@@ -205,7 +213,7 @@ function turpialapp_get_all_taxes() {
 	}
 	$decoded = json_decode( $result['body'], true );
 	if ( isset( $decoded[0]['uuid'] ) ) {
-		set_transient( $cache_key, $decoded, 3600 ); // Cache taxes for 1 hour.
+		set_transient( $cache_key, $decoded, 600 ); // Cache taxes for 1 hour.
 		turpialapp_log( array( 'turpialapp_get_all_taxes -> result' => $result ), 'info' );
 		return $decoded;
 	}

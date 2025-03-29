@@ -56,6 +56,6 @@ function turpialapp_access_token_key() {
 		return null;
 	}
 
-	$key = substr( md5( $setting['access_token'] ), 0, 8 );
+	$key = substr( md5( TURPIAL_APP_VERSION . $setting['access_token'] ), 0, 8 );
 	return $key;
 }

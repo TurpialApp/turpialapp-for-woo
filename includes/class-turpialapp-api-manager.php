@@ -134,12 +134,20 @@ class TurpialApp_API_Manager extends WC_Integration {
 			$this->form_fields[ 'payment_method_' . $payment_method->id ] = array(
 				'title'   => __( 'Payment Method for', 'turpialapp-for-woo' ) . ' ' . $payment_method->title,
 				'type'    => 'select',
-				'options' => array( '' => __( 'Select one after saving your access token', 'turpialapp-for-woo' ) ) + $options,
+				'options' => array( '' => __( 'Select one after saving your access token', 'turpialapp-for-woo' ) ),
 				'default' => '',
 			);
+			if ( count( $options ) > 0 ) {
+				$this->form_fields[ 'payment_method_' . $payment_method->id ]['options'] = array( '' => __( 'Select one', 'turpialapp-for-woo' ) ) + $options;
+			}
 		}
 		$options = turpialapp_get_all_printer_documents_options();
-		$this->form_fields['printer_document_uuid']['options'] = array( '' => __( 'Select one after saving your access token', 'turpialapp-for-woo' ) ) + $options;
+		if ( count( $options ) > 0 ) {
+			$options = array( '' => __( 'Select one', 'turpialapp-for-woo' ) ) + $options;
+			$this->form_fields['printer_document_uuid']['options'] = $options;
+		} else {
+			$this->form_fields['printer_document_uuid']['options'] = array( '' => __( 'Select one after saving your access token', 'turpialapp-for-woo' ) );
+		}
 	}
 
 	/**

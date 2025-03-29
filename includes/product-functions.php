@@ -34,6 +34,9 @@ function turpialapp_search_product_by_sku( $sku ) {
 		// Return cached product if available.
 		return $cache;
 	}
+
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+
 	// Example API call to search for a product by SKU.
 	$result = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/products/search?limit=10&page=1&sku=' . rawurlencode( $sku ),
@@ -92,6 +95,9 @@ function turpialapp_get_create_attribute( $attribute_group, $value ) {
 	$cache_value_key      = 'wc_tapp_attribute_group_' . $attribute_group . '_' . $value . '_' . $key;
 	$cache_group          = get_transient( $cache_group_key );
 	$attribute_group_uuid = null;
+
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+
 	if ( $cache_group ) {
 		$attribute_group_uuid = $cache_group; // Use cached attribute group if available.
 	} else {
@@ -288,6 +294,9 @@ function turpialapp_get_or_export_product( $product_id, $product_parent_uuid = n
 
 	// Check if product is variable.
 	$variations = $product->get_children();
+
+	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+
 	if ( $variations && count( $variations ) > 0 ) {
 		$request = array(
 			'headers' => array(
@@ -312,7 +321,8 @@ function turpialapp_get_or_export_product( $product_id, $product_parent_uuid = n
 				)
 			),
 		);
-		$result  = wp_remote_post( TURPIAL_APP_ENDPOINT . '/products', $request );
+
+		$result = wp_remote_post( TURPIAL_APP_ENDPOINT . '/products', $request );
 		if ( is_wp_error( $result ) ) {
 			turpialapp_log(
 				array(

@@ -26,6 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'TURPIAL_APP_ENDPOINT', 'https://api.turpial.app' );
 define( 'TURPIAL_APP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TURPIAL_APP_URL', plugin_dir_url( __FILE__ ) );
+define( 'TURPIAL_APP_VERSION', '1.0.1' );
 
 /**
  * Load required plugin files

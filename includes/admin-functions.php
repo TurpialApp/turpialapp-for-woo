@@ -39,6 +39,27 @@ add_action(
 );
 
 /**
+ * Enqueue admin scripts and styles.
+ *
+ * @return void
+ */
+add_action(
+	'admin_enqueue_scripts',
+	function () {
+		$asset_url = plugin_dir_url( __DIR__ ) . 'assets/js/admin-invoice.js';
+		$version   = defined( 'TURPIALAPP_FOR_WOO_VERSION' ) ? TURPIALAPP_FOR_WOO_VERSION : '1.0.0';
+
+		wp_enqueue_script(
+			'turpialapp-admin-invoice',
+			$asset_url,
+			array( 'jquery' ),
+			$version,
+			true
+		);
+	}
+);
+
+/**
  * Render content for Turpial invoice metabox.
  *
  * @param WP_Post $post The order post object to render content for.
@@ -66,45 +87,17 @@ function turpialapp_invoice_metabox_content( $post ) {
 		echo '<p class="error" style="color:red;">' . esc_html( $last_error ) . '</p>';
 	}
 
-	// Add JavaScript for button handling.
-	?>
-	<script type="text/javascript">
-	jQuery(document).ready(function($) {
-		$('#turpialapp_create_invoice').on('click', function(e) {
-			e.preventDefault();
-			var $button = $(this);
-			var $spinner = $button.next('.spinner');
-			
-			$button.prop('disabled', true);
-			$spinner.css('visibility', 'visible');
-			
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'turpialapp_create_invoice',
-					order_id: '<?php echo esc_js( $post->ID ); ?>',
-					nonce: $('#turpialapp_nonce').val()
-				},
-				success: function(response) {
-					if (response.success) {
-						location.reload(); // Reload the page on success.
-					} else {
-						alert(response.data.message || '<?php echo esc_js( __( 'Error creating the invoice', 'turpialapp-for-woo' ) ); ?>');
-						$button.prop('disabled', false);
-						$spinner.css('visibility', 'hidden');
-					}
-				},
-				error: function() {
-					alert('<?php echo esc_js( __( 'Connection error', 'turpialapp-for-woo' ) ); ?>');
-					$button.prop('disabled', false);
-					$spinner.css('visibility', 'hidden');
-				}
-			});
-		});
-	});
-	</script>
-	<?php
+	// Localize the script with necessary data.
+	wp_localize_script(
+		'turpialapp-admin-invoice',
+		'turpialapp_invoice_data',
+		array(
+			'order_id'         => $post->ID,
+			'nonce'            => wp_create_nonce( 'turpialapp_create_invoice' ),
+			'error_message'    => esc_js( __( 'Error creating the invoice', 'turpialapp-for-woo' ) ),
+			'connection_error' => esc_js( __( 'Connection error', 'turpialapp-for-woo' ) ),
+		)
+	);
 }
 
 /**
