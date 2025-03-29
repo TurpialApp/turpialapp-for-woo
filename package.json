@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "TurpialApp for WooCommerce",
   "scripts": {
-    "watch": "nodemon --watch . --ext php --ignore vendor/ --exec \"composer run fix-cs\""
+    "watch": "nodemon --watch . --ext php --ignore vendor/ --exec \"composer run fix-cs\"",
+    "build": "npx wp-scripts build"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
-    "chokidar": "^3.6.0"
+    "@wordpress/scripts": "^30.14.0",
+    "@wordpress/components": "^25.12.0",
+    "@wordpress/i18n": "^4.45.0",
+    "chokidar": "^3.6.0",
+    "nodemon": "^3.1.0"
   }
-} 
+}

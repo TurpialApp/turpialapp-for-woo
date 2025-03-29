@@ -114,6 +114,18 @@ class TurpialApp_API_Manager extends WC_Integration {
 				'label'   => __( 'Send orders as invoices to Turpial', 'turpialapp-for-woo' ),
 				'default' => 'no',
 			),
+			'customer_dni_meta_key' => array(
+				'title'   => __( 'Customer DNI Meta Key', 'turpialapp-for-woo' ),
+				'type'    => 'text',
+				'default' => '',
+				'desc'    => __( 'Optional: Use an existing order meta key for Customer DNI. If empty, the plugin will automatically add this field to the checkout form.', 'turpialapp-for-woo' ),
+			),
+			'company_vat_meta_key'  => array(
+				'title'   => __( 'Company VAT Meta Key', 'turpialapp-for-woo' ),
+				'type'    => 'text',
+				'default' => '',
+				'desc'    => __( 'Optional: Use an existing order meta key for Company VAT. If empty, the plugin will automatically add this field to the checkout form.', 'turpialapp-for-woo' ),
+			),
 			'export_order_date'     => array(
 				'title'   => __( 'Start date for exporting orders (Format YYYY-MM-DD)', 'turpialapp-for-woo' ),
 				'type'    => 'text',
