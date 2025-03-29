@@ -1,13 +1,13 @@
-# Script para crear un archivo ZIP del plugin WordPress
-# Elimina build directory si existe y crea uno nuevo
+# Script to create a WordPress plugin ZIP file
+# Remove build directory if exists and create a new one
 if (Test-Path -Path "build") {
     Remove-Item -Path "build" -Recurse -Force
 }
 New-Item -ItemType Directory -Path "build" -Force | Out-Null
 
-Write-Host "Empaquetando el plugin WordPress..."
+Write-Host "Packaging WordPress plugin..."
 
-# Definir elementos a excluir
+# Define items to exclude
 $excludedItems = @(
     ".git", 
     "node_modules", 
@@ -25,11 +25,11 @@ $excludedItems = @(
     "package-lock.json"
 )
 
-# Crear directorio temporal para los archivos
+# Create temporary directory for files
 $tempDir = "build\temp"
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
-# Obtener todos los archivos y carpetas excluyendo los no deseados
+# Get all files and folders excluding unwanted ones
 $filesToInclude = Get-ChildItem -Path "." -Recurse | Where-Object { 
     $item = $_
     $exclude = $false
@@ -42,7 +42,7 @@ $filesToInclude = Get-ChildItem -Path "." -Recurse | Where-Object {
     -not $exclude
 }
 
-# Copiar archivos al directorio temporal manteniendo la estructura relativa
+# Copy files to temporary directory maintaining relative structure
 foreach ($file in $filesToInclude) {
     $relativePath = $file.FullName.Substring($PWD.Path.Length + 1)
     $destination = Join-Path $tempDir $relativePath
@@ -54,19 +54,19 @@ foreach ($file in $filesToInclude) {
     Copy-Item $file.FullName -Destination $destination -Force
 }
 
-# Crear el archivo ZIP desde el directorio temporal
+# Create ZIP file from temporary directory
 $pluginDirName = "turpialapp-for-woo"
 $finalTempDir = Join-Path $tempDir $pluginDirName
 New-Item -ItemType Directory -Path $finalTempDir -Force | Out-Null
 
-# Mover todo del directorio temporal a un subdirectorio con el nombre del plugin
+# Move everything from temp directory to a subdirectory with plugin name
 Get-ChildItem -Path $tempDir -Exclude $pluginDirName | Move-Item -Destination $finalTempDir -Force
 
-# Comprimir el directorio que contiene la carpeta del plugin
+# Compress the directory containing the plugin folder
 Compress-Archive -Path "$finalTempDir" -DestinationPath "build\turpialapp-for-woo.zip" -Force
 
-# Limpiar directorio temporal
+# Clean up temporary directory
 Remove-Item -Path $tempDir -Recurse -Force
 
-Write-Host "Plugin empaquetado exitosamente en: build\turpialapp-for-woo.zip"
-Write-Host "Tamaño del archivo: $((Get-Item 'build\turpialapp-for-woo.zip').Length / 1KB) KB"
+Write-Host "Plugin successfully packaged to: build\turpialapp-for-woo.zip"
+Write-Host "File size: $((Get-Item 'build\turpialapp-for-woo.zip').Length / 1KB) KB"

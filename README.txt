@@ -6,7 +6,6 @@ Tested up to: 6.3
 Stable tag: 1.0.2
 Requires PHP: 7.2
 License: MIT
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 Connect Turpial App platform with your WooCommerce store for seamless order management and processing. Specialized in AFIP (Argentina) and SENIAT (Venezuela) tax compliance and electronic invoicing.
