@@ -35,7 +35,7 @@ class TurpialApp_For_Woo {
 			'plugin_action_links_' . plugin_basename( plugin_dir_path( __DIR__ ) . 'turpialapp-for-woo.php' ),
 			function ( $links ) {
 				$mylinks = array(
-					'<a style="font-weight: bold;color: red" href="' . admin_url( 'admin.php?page=wc-settings&tab=integration&section=turpialapp-for-woo-manager' ) . '">Configure</a>',
+					'<a style="font-weight: bold;color: red" href="' . admin_url( 'admin.php?page=wc-settings&tab=integration&section=turpialapp-for-woo-manager' ) . '">' . __( 'Settings', 'turpialapp-for-woo' ) . '</a>',
 				);
 				return array_merge( $links, $mylinks );
 			}

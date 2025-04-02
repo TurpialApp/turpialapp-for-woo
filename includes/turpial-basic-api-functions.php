@@ -30,7 +30,7 @@ function turpialapp_get_all_currencies() {
 		return 'error' === $cache ? array() : $cache; // Return cached currencies if available.
 	}
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 
 	$result = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/currencies',
@@ -75,7 +75,7 @@ function turpialapp_get_all_payment_methods() {
 		return 'error' === $cache ? null : $cache; // Return cached payment methods if available.
 	}
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	$result  = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/payment_methods?limit=100&page=1',
 		array(
@@ -135,7 +135,7 @@ function turpialapp_get_all_printer_documents() {
 		return 'error' === $cache ? null : $cache; // Return cached payment methods if available.
 	}
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	$result  = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/printer_documents?limit=100&page=1',
 		array(
@@ -196,7 +196,7 @@ function turpialapp_get_all_taxes() {
 		return 'error' === $cache ? null : $cache; // Return cached taxes if available.
 	}
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	$result  = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/taxes',
 		array(
@@ -230,7 +230,7 @@ function turpialapp_get_all_taxes() {
  * @return void
  */
 function turpialapp_update_stock_from_api() {
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	// Future implementation for stock updates.
 	// This function is commented in original code.
 }

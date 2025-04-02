@@ -66,15 +66,17 @@ class TurpialApp_Checkout_Blocks_Integration implements IntegrationInterface {
 	 * @return array
 	 */
 	public function get_script_data() {
-		$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+		$setting = turpialapp_setting();
 
 		return array(
-			'showDniField'   => empty( $setting['customer_dni_meta_key'] ),
-			'showVatField'   => empty( $setting['company_vat_meta_key'] ),
-			'dniLabel'       => __( 'DNI / National ID', 'turpialapp-for-woo' ),
-			'dniPlaceholder' => __( 'Enter your DNI number', 'turpialapp-for-woo' ),
-			'vatLabel'       => __( 'Company VAT Number', 'turpialapp-for-woo' ),
-			'vatPlaceholder' => __( 'Enter company VAT number', 'turpialapp-for-woo' ),
+			'showDniField'       => empty( $setting['customer_dni_meta_key'] ),
+			'showVatField'       => empty( $setting['company_vat_meta_key'] ),
+			'dniLabel'           => __( 'DNI / National ID', 'turpialapp-for-woo' ),
+			'dniPlaceholder'     => __( 'Enter your DNI number', 'turpialapp-for-woo' ),
+			'companyLabel'       => __( 'Company Name', 'turpialapp-for-woo' ),
+			'companyPlaceholder' => __( 'Enter company Name', 'turpialapp-for-woo' ),
+			'vatLabel'           => __( 'Company VAT Number', 'turpialapp-for-woo' ),
+			'vatPlaceholder'     => __( 'Enter company VAT number', 'turpialapp-for-woo' ),
 		);
 	}
 }

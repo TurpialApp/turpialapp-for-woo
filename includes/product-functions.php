@@ -35,7 +35,7 @@ function turpialapp_search_product_by_sku( $sku ) {
 		return $cache;
 	}
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 
 	// Example API call to search for a product by SKU.
 	$result = wp_remote_get(
@@ -96,7 +96,7 @@ function turpialapp_get_create_attribute( $attribute_group, $value ) {
 	$cache_group          = get_transient( $cache_group_key );
 	$attribute_group_uuid = null;
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 
 	if ( $cache_group ) {
 		$attribute_group_uuid = $cache_group; // Use cached attribute group if available.
@@ -277,7 +277,7 @@ function turpialapp_export_from_product_attributes( $product ) {
  *                    ['product' => array, 'children' => array, 'parent' => array].
  */
 function turpialapp_get_or_export_product( $product_id, $product_parent_uuid = null ) {
-	$setting  = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting  = turpialapp_setting();
 	$product  = wc_get_product( $product_id );
 	$sku      = $product->get_sku();
 	$with_sku = true;
@@ -295,7 +295,7 @@ function turpialapp_get_or_export_product( $product_id, $product_parent_uuid = n
 	// Check if product is variable.
 	$variations = $product->get_children();
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 
 	if ( $variations && count( $variations ) > 0 ) {
 		$request = array(

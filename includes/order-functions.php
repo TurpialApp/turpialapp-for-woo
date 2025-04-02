@@ -27,7 +27,7 @@ function turpialapp_export_order( $order ) {
 	if ( ! is_object( $order ) ) {
 		return; // Exit if the order is not a valid object.
 	}
-	$setting       = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting       = turpialapp_setting();
 	$turpial_taxes = turpialapp_get_all_taxes();
 	$order_id      = $order->get_id();
 	$woo_rate      = $order->get_meta( 'currency_convertion_rate', true );
@@ -149,7 +149,7 @@ function turpialapp_export_order( $order ) {
 		$tax_rate   = ( $total_tax / $subtotal ) * 100;
 		$taxes_uuid = array();
 		foreach ( $turpial_taxes as $t_tax ) {
-			if ( $t_tax['sum_to_invoice'] && abs( $t_tax['tax_rate'] - $tax_rate ) < 0.1 ) {
+			if ( $t_tax['sum_to_invoice'] && abs( $t_tax['tax_rate'] - $tax_rate ) < 0.01 ) {
 				$taxes_uuid[] = $t_tax['uuid'];
 				break;
 			}
@@ -210,16 +210,38 @@ function turpialapp_export_order( $order ) {
 			'request_reference'    => 'shipping',
 		);
 	}
+	$turpialapp_taxes = turpialapp_get_all_taxes();
+	$fees             = $order->get_fees();
+	foreach ( $fees as $fee ) {
+		$fee_found = false;
+		foreach ( $turpialapp_taxes as $turpialapp_tax ) {
+			if ( $turpialapp_tax['sum_to_invoice'] && $turpialapp_tax['name'] === $fee->name ) {
+				$fee_found = true;
+				break;
+			}
+		}
+		if ( ! $fee_found ) {
+			$items_array[] = array(
+				'qty'                  => 1,
+				'custom_product_name'  => $fee->name,
+				'custom_unit_price'    => (int) round( $fee->amount * 10000 ),
+				'custom_currency_uuid' => $turpial_currency['uuid'],
+				'request_reference'    => 'fee',
+			);
+		}
+	}
+
+	$order_created = $order->get_date_created()->date( 'Y-m-d' );
+
 	$invoice = array(
 		'invoice_type'          => 'INVOICE',
 		'customer_uuid'         => $customer['uuid'],
+		'rate_date'             => $order_created,
 		'products'              => $items_array,
 		'payments'              => array(
 			array(
 				'payment_method_uuid' => $setting[ 'payment_method_' . $payment_method_id ],
-				'request_reference'   => '' . $order->get_order_number(),
-				'total_payment'       => (int) round( $order->get_total() * 10000 ),
-				'currency_uuid'       => $turpial_currency['uuid'],
+				'total_payment'       => 1,
 			),
 		),
 		'printer_document_uuid' => $setting['printer_document_uuid'],
@@ -234,7 +256,7 @@ function turpialapp_export_order( $order ) {
 		),
 		'info'
 	);
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	$result  = wp_remote_post(
 		TURPIAL_APP_ENDPOINT . '/invoices/preview',
 		array(
@@ -255,15 +277,18 @@ function turpialapp_export_order( $order ) {
 	}
 	$decoded = json_decode( $result['body'], true );
 	turpialapp_log( array( 'turpialapp_export_orders[' . $order_id . '] -> result_preview' => $decoded ), 'debug' );
-	if ( ! isset( $decoded['invoice']['currency_uuid'] ) ) {
+	if ( ! isset( $decoded['currency_rate_by_payment_methods'][ $payment_method_id ] ) ) {
 		turpialapp_log( array( 'turpialapp_export_orders[' . $order_id . '] -> error2' => $decoded ), 'error' );
 		$order->update_meta_data( '_turpialapp_invoice_last_error', 'api-error: ' . wp_json_encode( $decoded ) );
 		$order->save();
 		return;
 	}
-	if ( $decoded['invoice']['currency_uuid'] !== $turpial_currency['uuid'] && $woo_rate ) {
-		$invoice['custom_invoice_currency_rate'] = $woo_rate; // Set custom currency rate if applicable.
-	}
+
+	$payment_rate = $decoded['currency_rate_by_payment_methods'][ $payment_method_id ];
+	$invoice_rate = $decoded['currency_rate_invoice'];
+
+	$invoice['payments'][0]['total_payment'] = round( ( $decoded['invoice']['total'] / $invoice_rate ) * $payment_rate, 0 );
+
 	$invoice = apply_filters( 'turpialapp_invoice_data', $invoice, $decoded, $order );
 	$result  = wp_remote_post(
 		TURPIAL_APP_ENDPOINT . '/invoices/save_preview',
@@ -312,7 +337,7 @@ function turpialapp_export_order( $order ) {
  */
 function turpialapp_export_orders( $force = false ) {
 	global $wpdb;
-	$setting           = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting           = turpialapp_setting();
 	$send_order        = $setting['send_order'] ?? 'no';
 	$export_order_date = $setting['export_order_date'] ?? '';
 	if ( ! $force && ( ! $export_order_date || ! $send_order || 'no' === $send_order ) ) {
@@ -376,7 +401,7 @@ add_action(
 	'woocommerce_order_status_changed',
 	function ( $order_id, $old_status, $new_status ) {
 		// Get the settings.
-		$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+		$setting = turpialapp_setting();
 
 		// Check if automatic sending is enabled.
 		if ( ! isset( $setting['send_order'] ) || 'yes' !== $setting['send_order'] ) {

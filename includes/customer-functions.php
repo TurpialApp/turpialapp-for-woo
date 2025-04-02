@@ -30,7 +30,7 @@ function turpialapp_search_customer_by_email( $email ) {
 	if ( $cache ) {
 		return $cache; // Return cached customer if available.
 	}
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	$result  = wp_remote_get(
 		TURPIAL_APP_ENDPOINT . '/customers/email/' . $email,
 		array(
@@ -115,7 +115,7 @@ function turpialapp_get_or_export_customer( $name, $dni, $company, $vat_company,
 		),
 	);
 
-	$setting = get_option( 'woocommerce_turpialapp-for-woo-manager_settings' );
+	$setting = turpialapp_setting();
 	$result  = wp_remote_post( TURPIAL_APP_ENDPOINT . '/customers', $request );
 	if ( is_wp_error( $result ) ) {
 		turpialapp_log(
