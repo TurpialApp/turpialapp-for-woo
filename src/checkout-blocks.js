@@ -1,7 +1,7 @@
 import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 
-const settings = window.wc.wcSettings.getSetting('turpialapp-custom-fields', {});
+const settings = window.wc.wcSettings.getSetting('cachicamoapp-custom-fields', {});
 
 // Create custom filter hook for checkout
 const FILTER_NAME = 'woocommerce_checkout_fields';
@@ -32,15 +32,15 @@ const addCustomFields = (fields) => {
 };
 
 // Add the filter
-addFilter(FILTER_NAME, 'turpialapp/custom-checkout-fields', addCustomFields);
+addFilter(FILTER_NAME, 'cachicamoapp/custom-checkout-fields', addCustomFields);
 
 // Add custom validation if needed
 const validateCustomFields = (data, errors) => {
     if (settings.showDniField && !data.billing_dni) {
-        errors.add('validation', __('Please enter your ID number', 'turpialapp-for-woo'));
+        errors.add('validation', __('Please enter your ID number', 'cachicamoapp-for-woo'));
     }
     
     return errors;
 };
 
-addFilter('woocommerce_checkout_fields_validation', 'turpialapp/checkout-fields-validation', validateCustomFields);
+addFilter('woocommerce_checkout_fields_validation', 'cachicamoapp/checkout-fields-validation', validateCustomFields);

@@ -1,8 +1,8 @@
 <?php
 /**
- * WooCommerce Blocks integration for TurpialApp custom fields
+ * WooCommerce Blocks integration for CachicamoApp custom fields
  *
- * @package TurpialApp_For_WooCommerce
+ * @package CachicamoApp_For_WooCommerce
  * @since 1.0.0
  */
 
@@ -11,16 +11,16 @@ use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class TurpialApp_Checkout_Blocks_Integration
+ * Class CachicamoApp_Checkout_Blocks_Integration
  */
-class TurpialApp_Checkout_Blocks_Integration implements IntegrationInterface {
+class CachicamoApp_Checkout_Blocks_Integration implements IntegrationInterface {
 	/**
 	 * The name of the integration.
 	 *
 	 * @return string
 	 */
 	public function get_name() {
-		return 'turpialapp-custom-fields';
+		return 'cachicamoapp-custom-fields';
 	}
 
 	/**
@@ -41,14 +41,14 @@ class TurpialApp_Checkout_Blocks_Integration implements IntegrationInterface {
 		$asset_file = include __DIR__ . '/../assets/checkout-blocks.asset.php';
 
 		wp_register_script(
-			'turpialapp-checkout-blocks',
+			'cachicamoapp-checkout-blocks',
 			__DIR__ . '/../assets/checkout-blocks.js',
 			$asset_file['dependencies'],
 			$asset_file['version'],
 			true
 		);
 
-		return array( 'turpialapp-checkout-blocks' );
+		return array( 'cachicamoapp-checkout-blocks' );
 	}
 
 	/**
@@ -66,17 +66,17 @@ class TurpialApp_Checkout_Blocks_Integration implements IntegrationInterface {
 	 * @return array
 	 */
 	public function get_script_data() {
-		$setting = turpialapp_setting();
+		$setting = cachicamoapp_setting();
 
 		return array(
 			'showDniField'       => empty( $setting['customer_dni_meta_key'] ),
 			'showVatField'       => empty( $setting['company_vat_meta_key'] ),
-			'dniLabel'           => __( 'DNI / National ID', 'turpialapp-for-woo' ),
-			'dniPlaceholder'     => __( 'Enter your DNI number', 'turpialapp-for-woo' ),
-			'companyLabel'       => __( 'Company Name', 'turpialapp-for-woo' ),
-			'companyPlaceholder' => __( 'Enter company Name', 'turpialapp-for-woo' ),
-			'vatLabel'           => __( 'Company VAT Number', 'turpialapp-for-woo' ),
-			'vatPlaceholder'     => __( 'Enter company VAT number', 'turpialapp-for-woo' ),
+			'dniLabel'           => __( 'DNI / National ID', 'cachicamoapp-for-woo' ),
+			'dniPlaceholder'     => __( 'Enter your DNI number', 'cachicamoapp-for-woo' ),
+			'companyLabel'       => __( 'Company Name', 'cachicamoapp-for-woo' ),
+			'companyPlaceholder' => __( 'Enter company Name', 'cachicamoapp-for-woo' ),
+			'vatLabel'           => __( 'Company VAT Number', 'cachicamoapp-for-woo' ),
+			'vatPlaceholder'     => __( 'Enter company VAT number', 'cachicamoapp-for-woo' ),
 		);
 	}
 }

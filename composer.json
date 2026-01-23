@@ -1,6 +1,6 @@
 {
-    "name": "turpialapp/turpialapp-for-woo",
-    "description": "TurpialApp for WooCommerce",
+    "name": "cachicamoapp/cachicamoapp-for-woo",
+    "description": "CachicamoApp for WooCommerce",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require-dev": {

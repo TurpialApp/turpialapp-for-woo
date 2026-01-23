@@ -1,0 +1,192 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Cachicamo App for WooCommerce\n"
+"POT-Creation-Date: 2025-04-02 19:42-0400\n"
+"PO-Revision-Date: 2025-04-02 19:45-0400\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.5\n"
+"X-Poedit-Basepath: .\n"
+"X-Poedit-Flags-xgettext: --add-comments=translators:\n"
+"X-Poedit-WPHeader: cachicamoapp-for-woo.php\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
+"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;_n_noop:1,2;"
+"_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.min.js\n"
+
+#: includes/admin-functions.php:32
+msgid "Cachicamo App Invoice"
+msgstr "Factura de Cachicamo App"
+
+#: includes/admin-functions.php:75
+msgid "Invoice UUID"
+msgstr "UUID de la Factura"
+
+#: includes/admin-functions.php:76
+msgid "View Invoice"
+msgstr "Ver Factura"
+
+#: includes/admin-functions.php:81
+msgid "Create Invoice"
+msgstr "Crear Factura"
+
+#: includes/admin-functions.php:97
+msgid "Error creating the invoice"
+msgstr "Error al crear la factura"
+
+#: includes/admin-functions.php:98
+msgid "Connection error"
+msgstr "Error de conexión"
+
+#: includes/admin-functions.php:114
+msgid "Missing order ID"
+msgstr "ID de pedido no encontrado"
+
+#: includes/admin-functions.php:120
+msgid "Invalid order ID"
+msgstr "ID de pedido inválido"
+
+#: includes/class-cachicamoapp-api-manager.php:53
+msgid "Cachicamo App"
+msgstr "Cachicamo App"
+
+#: includes/class-cachicamoapp-api-manager.php:87
+msgid "Access Token"
+msgstr "Token de Acceso"
+
+#: includes/class-cachicamoapp-api-manager.php:92
+msgid "Store/Warehouse S-ID"
+msgstr "ID de Tienda/Almacén"
+
+#: includes/class-cachicamoapp-api-manager.php:97
+msgid "User/Employee T-ID"
+msgstr "ID de Usuario/Empleado"
+
+#: includes/class-cachicamoapp-api-manager.php:102
+msgid "Fiscal Printer"
+msgstr "Impresora Fiscal"
+
+#: includes/class-cachicamoapp-api-manager.php:107
+msgid "Cronjob Time in Minutes for Stock and Inventory Update"
+msgstr "Tiempo de Cronjob en Minutos para Actualización de Stock e Inventario"
+
+#: includes/class-cachicamoapp-api-manager.php:112
+msgid "Automatically send orders as invoices once payment is validated."
+msgstr ""
+"Enviar automáticamente los pedidos como facturas una vez que se valide el pago."
+
+#: includes/class-cachicamoapp-api-manager.php:114
+msgid "Send orders as invoices to Cachicamo"
+msgstr "Enviar pedidos como facturas a Cachicamo"
+
+#: includes/class-cachicamoapp-api-manager.php:118
+msgid "Customer DNI Meta Key"
+msgstr "Clave Meta del DNI del Cliente"
+
+#: includes/class-cachicamoapp-api-manager.php:121
+msgid ""
+"Optional: Use an existing order meta key for Customer DNI. If empty, the plugin "
+"will automatically add this field to the checkout form."
+msgstr ""
+"Opcional: Use una clave meta existente para el DNI del Cliente. Si está vacío, "
+"el plugin agregará automáticamente este campo al formulario de pago."
+
+#: includes/class-cachicamoapp-api-manager.php:124
+msgid "Company VAT Meta Key"
+msgstr "Clave Meta del IVA de la Empresa"
+
+#: includes/class-cachicamoapp-api-manager.php:127
+msgid ""
+"Optional: Use an existing order meta key for Company VAT. If empty, the plugin "
+"will automatically add this field to the checkout form."
+msgstr ""
+"Opcional: Use una clave meta existente para el IVA de la Empresa. Si está vacío, "
+"el plugin agregará automáticamente este campo al formulario de pago."
+
+#: includes/class-cachicamoapp-api-manager.php:130
+msgid "Start date for exporting orders (Format YYYY-MM-DD)"
+msgstr "Fecha de inicio para exportar pedidos (Formato AAAA-MM-DD)"
+
+#: includes/class-cachicamoapp-api-manager.php:135
+msgid "Debug"
+msgstr "Depurar"
+
+#: includes/class-cachicamoapp-api-manager.php:137
+msgid "Activate log"
+msgstr "Activar registro"
+
+#: includes/class-cachicamoapp-api-manager.php:147
+msgid "Payment Method for"
+msgstr "Método de Pago para"
+
+#: includes/class-cachicamoapp-api-manager.php:149
+#: includes/class-cachicamoapp-api-manager.php:161
+msgid "Select one after saving your access token"
+msgstr "Selecciona uno después de guardar tu token de acceso"
+
+#: includes/class-cachicamoapp-api-manager.php:153
+#: includes/class-cachicamoapp-api-manager.php:158
+msgid "Select one"
+msgstr "Seleccione uno"
+
+#: includes/class-cachicamoapp-checkout-blocks-integration.php:74
+#: includes/utils.php:89
+msgid "DNI / National ID"
+msgstr "DNI / Documento de Identidad"
+
+#: includes/class-cachicamoapp-checkout-blocks-integration.php:75
+#: includes/utils.php:90
+msgid "Enter your DNI number"
+msgstr "Ingrese su número de DNI"
+
+#: includes/class-cachicamoapp-checkout-blocks-integration.php:76
+msgid "Company Name"
+msgstr "Nombre de la Empresa"
+
+#: includes/class-cachicamoapp-checkout-blocks-integration.php:77
+msgid "Enter company Name"
+msgstr "Ingrese el nombre de la empresa"
+
+#: includes/class-cachicamoapp-checkout-blocks-integration.php:78
+#: includes/utils.php:105
+msgid "Company VAT Number"
+msgstr "Número de IVA de la Empresa"
+
+#: includes/class-cachicamoapp-checkout-blocks-integration.php:79
+#: includes/utils.php:106
+msgid "Enter company VAT number"
+msgstr "Ingrese el número de IVA de la empresa"
+
+#: includes/class-cachicamoapp-for-woo.php:38
+msgid "Settings"
+msgstr "Configuración"
+
+#: src/checkout-blocks.js:40
+msgid "Please enter your ID number"
+msgstr "Por favor ingrese su número de documento"
+
+#. Plugin Name of the plugin/theme
+msgid "Cachicamo App for WooCommerce"
+msgstr "Cachicamo App para WooCommerce"
+
+#. Plugin URI of the plugin/theme
+#. Author URI of the plugin/theme
+msgid "https://cachicamo.app/"
+msgstr "https://cachicamo.app/"
+
+#. Description of the plugin/theme
+msgid "Export Orders to CachicamoApp"
+msgstr "Exportar Pedidos a CachicamoApp"
+
+#. Author of the plugin/theme
+msgid "Kijam López"
+msgstr "Kijam López"
+
+#~ msgid "Insufficient permissions"
+#~ msgstr "Permisos insuficientes"

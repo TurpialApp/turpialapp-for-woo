@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<ruleset name="TurpialApp WooCommerce Plugin">
-    <description>Reglas de codificación para el plugin TurpialApp for WooCommerce.</description>
+<ruleset name="CachicamoApp WooCommerce Plugin">
+    <description>Reglas de codificación para el plugin CachicamoApp for WooCommerce.</description>
 
     <file>.</file>
     
@@ -20,4 +20,4 @@
     <arg value="ps"/>
     
     <arg name="colors"/>
-</ruleset> 
+</ruleset>

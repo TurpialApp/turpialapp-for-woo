@@ -1,7 +1,7 @@
 {
-  "name": "turpialapp-for-woo",
+  "name": "cachicamoapp-for-woo",
   "version": "1.0.0",
-  "description": "TurpialApp for WooCommerce",
+  "description": "Connect Cachicamo with WooCommerce for inventory sync and order management",
   "scripts": {
     "watch": "nodemon --watch . --ext php --ignore vendor/ --exec \"composer run fix-cs\"",
     "build": "npx wp-scripts build"
