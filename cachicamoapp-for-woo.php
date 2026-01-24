@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Cachicamo App for WooCommerce
  * Plugin URI: https://cachicamo.app/
- * Description: Connect Cachicamo with WooCommerce for inventory sync and order management
+ * Description: Connect Cachicamo with WooCommerce for inventory sync
  * Author: Kijam López
  * Author URI: https://cachicamo.app/
  * Version: 1.0.0
