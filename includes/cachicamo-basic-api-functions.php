@@ -228,52 +228,145 @@ function cachicamoapp_update_stock_from_api() {
 
 	$products = wc_get_products( $args );
 	
+	cachicamoapp_log( array( 
+		'cachicamoapp_update_stock_from_api -> Products retrieved' => array(
+			'total_products' => count( $products ),
+		)
+	), 'info' );
+	
 	// Collect all SKUs and create SKU -> Product mapping
 	$sku_to_product_map = array();
 	$all_skus = array();
+	$simple_count = 0;
+	$variable_count = 0;
+	$variation_count = 0;
+	$products_with_sku = 0;
+	$products_without_sku = 0;
+	$variations_with_sku = 0;
+	$variations_without_sku = 0;
 
 	foreach ( $products as $product ) {
 		$product_id = $product->get_id();
 		$sku = $product->get_sku();
 		$wc_id_sku = 'WC-' . $product_id;
+		$product_type = $product->get_type();
 		
 		$product_data = array(
 			'product' => $product,
 			'type' => 'parent',
+			'product_id' => $product_id,
+			'product_name' => $product->get_name(),
 		);
 
 		// Use both real SKU and WC-{ID} for better matching
-		if ( ! empty( $sku ) ) {
+		// Log SKU value for debugging (even if empty)
+		$sku_value = $sku;
+		$sku_is_empty = empty( $sku ) || trim( $sku ) === '';
+		$sku_type = gettype( $sku );
+		
+		if ( ! $sku_is_empty && is_string( $sku ) && strlen( trim( $sku ) ) > 0 ) {
 			$sku_to_product_map[ $sku ] = $product_data;
 			$all_skus[] = $sku;
+			$products_with_sku++;
+			
+			cachicamoapp_log( array( 
+				'cachicamoapp_update_stock_from_api -> Added product SKU' => array(
+					'sku' => $sku,
+					'product_id' => $product_id,
+					'product_name' => $product->get_name(),
+					'type' => $product_type,
+				)
+			), 'debug' );
+		} else {
+			$products_without_sku++;
+			cachicamoapp_log( array( 
+				'cachicamoapp_update_stock_from_api -> Product without SKU' => array(
+					'product_id' => $product_id,
+					'product_name' => $product->get_name(),
+					'type' => $product_type,
+					'sku_value' => $sku_value,
+					'sku_type' => $sku_type,
+					'sku_is_empty' => $sku_is_empty,
+				)
+			), 'debug' );
 		}
 		
 		// Always add WC-{ID} format
 		$sku_to_product_map[ $wc_id_sku ] = $product_data;
 		$all_skus[] = $wc_id_sku;
 
+		if ( $product_type === 'simple' ) {
+			$simple_count++;
+		}
+
 		// Handle variable products - collect variation SKUs
 		if ( $product->is_type( 'variable' ) ) {
+			$variable_count++;
 			$variations = $product->get_children();
+			
+			cachicamoapp_log( array( 
+				'cachicamoapp_update_stock_from_api -> Processing variable product' => array(
+					'product_id' => $product_id,
+					'product_name' => $product->get_name(),
+					'parent_sku' => $sku,
+					'variations_count' => count( $variations ),
+				)
+			), 'debug' );
+			
 			foreach ( $variations as $variation_id ) {
 				$variation = wc_get_product( $variation_id );
 				if ( ! $variation ) {
+					cachicamoapp_log( array( 
+						'cachicamoapp_update_stock_from_api -> Variation not found' => array(
+							'variation_id' => $variation_id,
+							'parent_id' => $product_id,
+						)
+					), 'warning' );
 					continue;
 				}
 				
 				$variation_sku = $variation->get_sku();
 				$variation_wc_id = 'WC-' . $variation_id;
+				$variation_count++;
 				
 				$variation_data = array(
 					'product' => $variation,
 					'type' => 'variation',
 					'parent_id' => $product_id,
+					'variation_id' => $variation_id,
+					'variation_name' => $variation->get_name(),
 				);
 
 				// Use both real SKU and WC-{ID} for better matching
-				if ( ! empty( $variation_sku ) ) {
+				$variation_sku_value = $variation_sku;
+				$variation_sku_is_empty = empty( $variation_sku ) || trim( $variation_sku ) === '';
+				$variation_sku_type = gettype( $variation_sku );
+				
+				if ( ! $variation_sku_is_empty && is_string( $variation_sku ) && strlen( trim( $variation_sku ) ) > 0 ) {
 					$sku_to_product_map[ $variation_sku ] = $variation_data;
 					$all_skus[] = $variation_sku;
+					$variations_with_sku++;
+					
+					cachicamoapp_log( array( 
+						'cachicamoapp_update_stock_from_api -> Added variation SKU' => array(
+							'sku' => $variation_sku,
+							'variation_id' => $variation_id,
+							'parent_id' => $product_id,
+							'variation_name' => $variation->get_name(),
+						)
+					), 'debug' );
+				} else {
+					$variations_without_sku++;
+					cachicamoapp_log( array( 
+						'cachicamoapp_update_stock_from_api -> Variation without SKU' => array(
+							'variation_id' => $variation_id,
+							'parent_id' => $product_id,
+							'variation_name' => $variation->get_name(),
+							'sku_value' => $variation_sku_value,
+							'sku_type' => $variation_sku_type,
+							'sku_is_empty' => $variation_sku_is_empty,
+						)
+					), 'debug' );
 				}
 				
 				// Always add WC-{ID} format
@@ -288,8 +381,36 @@ function cachicamoapp_update_stock_from_api() {
 		return;
 	}
 
+	// Analyze SKU types collected
+	$real_skus_collected = array();
+	$wc_id_skus_collected = array();
+	foreach ( $all_skus as $sku ) {
+		if ( strpos( $sku, 'WC-' ) === 0 ) {
+			$wc_id_skus_collected[] = $sku;
+		} else {
+			$real_skus_collected[] = $sku;
+		}
+	}
+	
 	cachicamoapp_log( array( 
-		'cachicamoapp_update_stock_from_api -> Total SKUs to sync' => count( $all_skus )
+		'cachicamoapp_update_stock_from_api -> Products collected' => array(
+			'total_products' => count( $products ),
+			'simple_products' => $simple_count,
+			'variable_products' => $variable_count,
+			'total_variations' => $variation_count,
+			'sku_statistics' => array(
+				'products_with_sku' => $products_with_sku,
+				'products_without_sku' => $products_without_sku,
+				'variations_with_sku' => $variations_with_sku,
+				'variations_without_sku' => $variations_without_sku,
+			),
+			'sku_analysis' => array(
+				'total_skus' => count( $all_skus ),
+				'real_skus_count' => count( $real_skus_collected ),
+				'wc_id_skus_count' => count( $wc_id_skus_collected ),
+				'real_skus_sample' => array_slice( $real_skus_collected, 0, 20 ), // Show first 20 real SKUs
+			),
+		)
 	), 'info' );
 
 	$synced_count = 0;
@@ -302,11 +423,27 @@ function cachicamoapp_update_stock_from_api() {
 
 	foreach ( $batches as $batch_skus ) {
 		$batch_number++;
+		
+		// Separate real SKUs from WC-{ID} format
+		$real_skus = array();
+		$wc_id_skus = array();
+		foreach ( $batch_skus as $sku ) {
+			if ( strpos( $sku, 'WC-' ) === 0 ) {
+				$wc_id_skus[] = $sku;
+			} else {
+				$real_skus[] = $sku;
+			}
+		}
+		
 		cachicamoapp_log( array( 
 			'cachicamoapp_update_stock_from_api -> Processing batch' => array(
 				'batch' => $batch_number,
 				'total_batches' => count( $batches ),
 				'skus_in_batch' => count( $batch_skus ),
+				'real_skus_count' => count( $real_skus ),
+				'wc_id_skus_count' => count( $wc_id_skus ),
+				'real_skus' => $real_skus,
+				'wc_id_skus_sample' => array_slice( $wc_id_skus, 0, 10 ), // Show first 10 to avoid log spam
 			)
 		), 'info' );
 
@@ -356,30 +493,65 @@ function cachicamoapp_update_stock_from_api() {
 			cachicamoapp_log( array( 
 				'cachicamoapp_update_stock_from_api -> Invalid response format' => array(
 					'batch' => $batch_number,
+					'response_body' => wp_remote_retrieve_body( $response ),
 				)
 			), 'error' );
 			$error_count += count( $batch_skus );
 			continue;
 		}
 
+		cachicamoapp_log( array( 
+			'cachicamoapp_update_stock_from_api -> Received inventory data' => array(
+				'batch' => $batch_number,
+				'items_count' => count( $inventory_data ),
+				'skus_requested' => count( $batch_skus ),
+			)
+		), 'debug' );
+
 		// Process results and update WooCommerce products
 		$not_found_skus = array();
+		$found_skus = array();
+		$updated_products = array();
+		
 		foreach ( $inventory_data as $inventory_item ) {
 			if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
+				cachicamoapp_log( array( 
+					'cachicamoapp_update_stock_from_api -> Invalid inventory item structure' => array(
+						'batch' => $batch_number,
+						'inventory_item' => $inventory_item,
+					)
+				), 'warning' );
 				continue;
 			}
 
 			$stock_quantity = floatval( $inventory_item['stock_billable'] );
+			$inventory_skus = $inventory_item['sku_list'];
+			
+			cachicamoapp_log( array( 
+				'cachicamoapp_update_stock_from_api -> Processing inventory item' => array(
+					'batch' => $batch_number,
+					'sku_list' => $inventory_skus,
+					'stock_billable' => $stock_quantity,
+				)
+			), 'debug' );
 
-			$not_found = true;
+			$item_found = false;
 			// Update all products/variations matching the SKUs
-			foreach ( $inventory_item['sku_list'] as $sku ) {
+			foreach ( $inventory_skus as $sku ) {
 				if ( ! isset( $sku_to_product_map[ $sku ] ) ) {
+					cachicamoapp_log( array( 
+						'cachicamoapp_update_stock_from_api -> SKU from API not in WooCommerce map' => array(
+							'sku' => $sku,
+							'batch' => $batch_number,
+						)
+					), 'debug' );
 					continue;
 				}
 
 				$product_data = $sku_to_product_map[ $sku ];
 				$wc_product = $product_data['product'];
+				$product_id = $wc_product->get_id();
+				$old_stock = $wc_product->get_stock_quantity();
 
 				// Update stock in WooCommerce
 				// Cachicamo is the source of truth - always overwrite
@@ -389,32 +561,77 @@ function cachicamoapp_update_stock_from_api() {
 				$wc_product->save();
 
 				$synced_count++;
+				$item_found = true;
+				$found_skus[] = $sku;
+				
+				$update_info = array(
+					'sku' => $sku,
+					'type' => $product_data['type'],
+					'product_id' => $product_id,
+					'old_stock' => $old_stock,
+					'new_stock' => $stock_quantity,
+					'stock_status' => $stock_quantity > 0 ? 'instock' : 'outofstock',
+				);
+				
+				if ( isset( $product_data['product_name'] ) ) {
+					$update_info['product_name'] = $product_data['product_name'];
+				}
+				if ( isset( $product_data['variation_name'] ) ) {
+					$update_info['variation_name'] = $product_data['variation_name'];
+				}
+				if ( isset( $product_data['parent_id'] ) ) {
+					$update_info['parent_id'] = $product_data['parent_id'];
+				}
+				
+				$updated_products[] = $update_info;
 
 				cachicamoapp_log( array( 
-					'cachicamoapp_update_stock_from_api -> Updated stock' => array(
-						'sku' => $sku,
-						'type' => $product_data['type'],
-						'quantity' => $stock_quantity,
-					)
+					'cachicamoapp_update_stock_from_api -> Updated stock' => $update_info
 				), 'debug' );
 
-				$not_found = false;
-				break;
+				break; // Only update once per inventory item
 			}
-			if ( $not_found ) {
-				$not_found_skus[] = $sku;
+			
+			if ( ! $item_found ) {
+				// None of the SKUs in this inventory item matched any WooCommerce product
+				$not_found_skus = array_merge( $not_found_skus, $inventory_skus );
 			}
 		}
 
-		// Log SKUs not found in Cachicamo
+		// Log summary for this batch
+		cachicamoapp_log( array( 
+			'cachicamoapp_update_stock_from_api -> Batch processing summary' => array(
+				'batch' => $batch_number,
+				'skus_requested' => count( $batch_skus ),
+				'items_received' => count( $inventory_data ),
+				'products_updated' => count( $updated_products ),
+				'skus_found' => count( $found_skus ),
+				'skus_not_found_count' => count( $not_found_skus ),
+			)
+		), 'info' );
+
+		// Log SKUs not found in WooCommerce (from API response)
 		if ( ! empty( $not_found_skus ) ) {
 			cachicamoapp_log( array( 
-				'cachicamoapp_update_stock_from_api -> SKUs not found in Cachicamo' => array(
+				'cachicamoapp_update_stock_from_api -> SKUs from API not found in WooCommerce' => array(
 					'batch' => $batch_number,
 					'count' => count( $not_found_skus ),
-					'skus' => $not_found_skus,
+					'skus' => array_unique( $not_found_skus ),
 				)
 			), 'debug' );
+		}
+		
+		// Log SKUs requested but not returned by API
+		$requested_not_returned = array_diff( $batch_skus, $found_skus );
+		if ( ! empty( $requested_not_returned ) ) {
+			cachicamoapp_log( array( 
+				'cachicamoapp_update_stock_from_api -> SKUs requested but not returned by API' => array(
+					'batch' => $batch_number,
+					'count' => count( $requested_not_returned ),
+					'skus' => array_values( $requested_not_returned ),
+				)
+			), 'debug' );
+			$not_found_count += count( $requested_not_returned );
 		}
 	}
 
@@ -426,11 +643,22 @@ function cachicamoapp_update_stock_from_api() {
 
 	cachicamoapp_log( array( 
 		'cachicamoapp_update_stock_from_api -> Batch sync completed' => array(
-			'total_skus' => count( $all_skus ),
-			'synced' => $synced_count,
-			'not_found' => $not_found_count,
-			'errors' => $error_count,
-			'batches_processed' => count( $batches ),
+			'summary' => array(
+				'total_products_processed' => count( $products ),
+				'simple_products' => $simple_count,
+				'variable_products' => $variable_count,
+				'total_variations' => $variation_count,
+			),
+			'skus' => array(
+				'total_skus_collected' => count( $all_skus ),
+				'products_updated' => $synced_count,
+				'not_found_in_api' => $not_found_count,
+			),
+			'processing' => array(
+				'batches_processed' => count( $batches ),
+				'errors' => $error_count,
+			),
+			'timestamp' => current_time( 'mysql' ),
 		)
 	), 'info' );
 }
