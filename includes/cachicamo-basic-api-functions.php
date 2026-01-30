@@ -624,18 +624,502 @@ function cachicamoapp_search_product_by_sku( $sku ) {
 }
 
 /**
+ * Create database table for batch queue if it doesn't exist.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function cachicamoapp_create_batch_queue_table() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'cachicamoapp_batch_queue';
+	$charset_collate = $wpdb->get_charset_collate();
+
+	$sql = "CREATE TABLE IF NOT EXISTS $table_name (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		batch_number int(11) NOT NULL,
+		total_batches int(11) NOT NULL,
+		sku_list longtext NOT NULL,
+		status varchar(20) NOT NULL DEFAULT 'pending',
+		created_at datetime NOT NULL,
+		processed_at datetime DEFAULT NULL,
+		error_message text DEFAULT NULL,
+		PRIMARY KEY (id),
+		KEY status (status),
+		KEY batch_number (batch_number)
+	) $charset_collate;";
+
+	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+	dbDelta( $sql );
+}
+
+/**
+ * Clear all pending batches from the queue.
+ *
+ * @since 1.0.0
+ * @return int Number of rows deleted.
+ */
+function cachicamoapp_clear_batch_queue() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'cachicamoapp_batch_queue';
+	
+	return $wpdb->query( "DELETE FROM $table_name WHERE status = 'pending'" );
+}
+
+/**
+ * Get the next pending batch from the queue.
+ *
+ * @since 1.0.0
+ * @return object|null Batch object or null if no pending batches.
+ */
+function cachicamoapp_get_next_pending_batch() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'cachicamoapp_batch_queue';
+	
+	return $wpdb->get_row( 
+		"SELECT * FROM $table_name WHERE status = 'pending' ORDER BY batch_number ASC LIMIT 1" 
+	);
+}
+
+/**
+ * Mark a batch as processed.
+ *
+ * @since 1.0.0
+ * @param int    $batch_id Batch ID.
+ * @param string $status Status ('completed' or 'error').
+ * @param string $error_message Optional error message.
+ * @return void
+ */
+function cachicamoapp_mark_batch_processed( $batch_id, $status = 'completed', $error_message = null ) {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'cachicamoapp_batch_queue';
+	
+	$wpdb->update(
+		$table_name,
+		array(
+			'status' => $status,
+			'processed_at' => current_time( 'mysql' ),
+			'error_message' => $error_message,
+		),
+		array( 'id' => $batch_id ),
+		array( '%s', '%s', '%s' ),
+		array( '%d' )
+	);
+}
+
+/**
+ * Count pending batches in the queue.
+ *
+ * @since 1.0.0
+ * @return int Number of pending batches.
+ */
+function cachicamoapp_count_pending_batches() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'cachicamoapp_batch_queue';
+	
+	return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table_name WHERE status = 'pending'" );
+}
+
+/**
+ * Process a single batch of SKUs.
+ *
+ * @since 1.0.0
+ * @param array $batch_skus Array of SKUs to process.
+ * @param array $sku_to_product_map Mapping of SKUs to WooCommerce products.
+ * @param array $system_data Pre-loaded system data (tax_rates, currency_rates, etc.).
+ * @param int   $batch_number Current batch number.
+ * @param int   $total_batches Total number of batches.
+ * @return array Array with 'synced', 'errors', 'not_found' counts.
+ */
+function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $system_data, $batch_number, $total_batches ) {
+	$setting = cachicamoapp_setting();
+	
+	$synced_count = 0;
+	$error_count = 0;
+	$not_found_count = 0;
+	
+	cachicamoapp_log( array( 
+		'cachicamoapp_process_single_batch -> Processing batch' => array(
+			'batch' => $batch_number,
+			'total_batches' => $total_batches,
+			'skus_in_batch' => count( $batch_skus ),
+		)
+	), 'info' );
+
+	// Call batch endpoint with price (include_virtual=1 to get virtual product prices too)
+	$response = wp_remote_post(
+		CACHICAMO_APP_ENDPOINT . '/inventories/batch/sku?with_price=1&include_virtual=1',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $setting['access_token'],
+				'Content-Type'  => 'application/json',
+				'X-Store-Uuid'  => $setting['store_uuid'],
+			),
+			'body' => json_encode( array(
+				'sku_list' => $batch_skus,
+			) ),
+			'timeout' => 60, // Increased timeout for batch processing
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		cachicamoapp_log( array( 
+			'cachicamoapp_process_single_batch -> Batch request failed' => array(
+				'batch' => $batch_number,
+				'error' => $response->get_error_message(),
+			)
+		), 'error' );
+		$error_count += count( $batch_skus );
+		return array(
+			'synced' => $synced_count,
+			'errors' => $error_count,
+			'not_found' => $not_found_count,
+		);
+	}
+
+	$status_code = wp_remote_retrieve_response_code( $response );
+	if ( $status_code !== 200 ) {
+		cachicamoapp_log( array( 
+			'cachicamoapp_process_single_batch -> Batch request failed' => array(
+				'batch' => $batch_number,
+				'status_code' => $status_code,
+				'response' => wp_remote_retrieve_body( $response ),
+			)
+		), 'error' );
+		$error_count += count( $batch_skus );
+		return array(
+			'synced' => $synced_count,
+			'errors' => $error_count,
+			'not_found' => $not_found_count,
+		);
+	}
+
+	$inventory_data = json_decode( wp_remote_retrieve_body( $response ), true );
+	
+	if ( ! is_array( $inventory_data ) ) {
+		cachicamoapp_log( array( 
+			'cachicamoapp_process_single_batch -> Invalid response format' => array(
+				'batch' => $batch_number,
+				'response_body' => wp_remote_retrieve_body( $response ),
+			)
+		), 'error' );
+		$error_count += count( $batch_skus );
+		return array(
+			'synced' => $synced_count,
+			'errors' => $error_count,
+			'not_found' => $not_found_count,
+		);
+	}
+
+	// Process results and update WooCommerce products
+	$found_skus = array();
+	$received_inventory_items = array();
+	
+	// Extract system data
+	$tax_rates = $system_data['tax_rates'];
+	$currency_rates = $system_data['currency_rates'];
+	$base_currency_iso = $system_data['base_currency_iso'];
+	$to_currency = $system_data['to_currency'];
+	$store_config = $system_data['store_config'];
+	
+	foreach ( $inventory_data as $inventory_item ) {
+		if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
+			continue;
+		}
+
+		$stock_quantity = floatval( $inventory_item['stock_billable'] );
+		$inventory_skus = $inventory_item['sku_list'];
+		
+		// Track received items with price information
+		$item_log = array(
+			'sku_list' => $inventory_skus,
+			'stock_billable' => $stock_quantity,
+		);
+
+		$item_found = false;
+		// Update all products/variations matching the SKUs
+		foreach ( $inventory_skus as $sku ) {
+			if ( ! isset( $sku_to_product_map[ $sku ] ) ) {
+				continue;
+			}
+
+			$product_data = $sku_to_product_map[ $sku ];
+			$wc_product = $product_data['product'];
+			$product_id = $wc_product->get_id();
+			$is_virtual = $wc_product->is_virtual();
+
+			// Update stock in WooCommerce (only for non-virtual products)
+			if ( ! $is_virtual ) {
+				$wc_product->set_manage_stock( true );
+				$wc_product->set_stock_quantity( max( 0, $stock_quantity ) );
+				$wc_product->set_stock_status( $stock_quantity > 0 ? 'instock' : 'outofstock' );
+			}
+
+			// Update price if included in response
+			if ( isset( $inventory_item['price'] ) && is_array( $inventory_item['price'] ) ) {
+				$price_data = $inventory_item['price'];
+				
+				$retail_price = floatval( $price_data['amount_retail_format']['amount_float'] );
+				$from_currency = $price_data['amount_retail_format']['currency_iso'];
+				$product_tax_uuid = $inventory_item['tax_uuid'] ?? null;
+
+				// Get tax rate with fallback
+				$tax_rate = cachicamoapp_get_tax_rate_with_fallback( 
+					$tax_rates, 
+					$product_tax_uuid,
+					isset( $store_config['default_tax_uuid'] ) ? $store_config['default_tax_uuid'] : null,
+					$setting['user_uuid'] ?? null
+				);
+				
+				// Apply tax calculation
+				$final_price = cachicamoapp_apply_tax_calculation( 
+					$retail_price, 
+					$from_currency, 
+					$tax_rate, 
+					$currency_rates, 
+					$base_currency_iso,
+					$to_currency
+				);
+				
+				if ( ! $final_price || $final_price < 0.01 ) {
+					cachicamoapp_log( array( 
+						'cachicamoapp_process_single_batch -> Final price is null' => array(
+							'sku' => $sku,
+							'price' => $price_data,
+							'inventory_item' => $inventory_item,
+						)
+					), 'error' );
+					continue;
+				}
+				
+				// Add price information to log
+				$item_log['price_from_api'] = array(
+					'amount' => $retail_price,
+					'price_data' => $price_data['amount_retail_format'],
+					'currency' => $from_currency,
+					'tax_uuid' => $product_tax_uuid,
+					'tax_rate_applied' => $tax_rate,
+				);
+				$item_log['price_calculated'] = array(
+					'final_price' => $final_price,
+					'wc_currency' => $to_currency,
+					'base_currency' => $base_currency_iso,
+				);
+				
+				$wc_product->set_price( $final_price );
+				$wc_product->set_regular_price( $final_price );
+				$wc_product->set_sale_price( $final_price );
+			}
+
+			$wc_product->save();
+
+			$synced_count++;
+			$item_found = true;
+			$found_skus[] = $sku;
+
+			break; // Only update once per inventory item
+		}
+		
+		$received_inventory_items[] = $item_log;
+		
+		if ( ! $item_found ) {
+			$not_found_count += count( $inventory_skus );
+		}
+	}
+
+	// Log summary for this batch
+	cachicamoapp_log( array( 
+		'cachicamoapp_process_single_batch -> Batch processing summary' => array(
+			'batch' => $batch_number,
+			'items_received' => count( $inventory_data ),
+			'products_updated' => $synced_count,
+			'inventory_items_received' => $received_inventory_items,
+		)
+	), 'info' );
+	
+	// Count SKUs not returned by API
+	$requested_not_returned = array_diff( $batch_skus, $found_skus );
+	if ( ! empty( $requested_not_returned ) ) {
+		$not_found_count += count( $requested_not_returned );
+	}
+	
+	return array(
+		'synced' => $synced_count,
+		'errors' => $error_count,
+		'not_found' => $not_found_count,
+	);
+}
+
+/**
+ * Process the next pending batch in the queue.
+ *
+ * This function is called by the scheduled cron job every minute.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function cachicamoapp_process_next_batch_job() {
+	$next_batch = cachicamoapp_get_next_pending_batch();
+	
+	if ( ! $next_batch ) {
+		// No more pending batches, unschedule the recurring job
+		wp_clear_scheduled_hook( 'cachicamoapp_process_batch_queue' );
+		cachicamoapp_log( array( 'cachicamoapp_process_next_batch_job -> All batches completed' ), 'info' );
+		return;
+	}
+	
+	cachicamoapp_log( array( 
+		'cachicamoapp_process_next_batch_job -> Processing batch from queue' => array(
+			'batch_id' => $next_batch->id,
+			'batch_number' => $next_batch->batch_number,
+			'total_batches' => $next_batch->total_batches,
+		)
+	), 'info' );
+	
+	// Pre-load system data
+	$tax_rates = cachicamoapp_get_all_tax_rates();
+	$currency_rates = cachicamoapp_get_currency_rates();
+	$base_currency = cachicamoapp_get_base_currency();
+	$store_config = cachicamoapp_get_store_configuration();
+	
+	$base_currency_iso = isset( $base_currency['iso'] ) ? $base_currency['iso'] : 'VES';
+	$to_currency = get_woocommerce_currency();
+	
+	$system_data = array(
+		'tax_rates' => $tax_rates,
+		'currency_rates' => $currency_rates,
+		'base_currency_iso' => $base_currency_iso,
+		'to_currency' => $to_currency,
+		'store_config' => $store_config,
+	);
+	
+	// Rebuild SKU to product map for this batch
+	$batch_skus = json_decode( $next_batch->sku_list, true );
+	
+	// Get all WooCommerce products with SKUs
+	$all_products_args = array(
+		'status' => 'publish',
+		'limit'  => -1,
+	);
+	
+	$products = wc_get_products( $all_products_args );
+	
+	// Collect all SKUs and create SKU -> Product mapping
+	$sku_to_product_map = array();
+	
+	foreach ( $products as $product ) {
+		$product_id = $product->get_id();
+		$sku = $product->get_sku();
+		$wc_id_sku = 'WC-' . $product_id;
+		$product_type = $product->get_type();
+		
+		$product_data = array(
+			'product' => $product,
+			'type' => 'parent',
+			'product_id' => $product_id,
+			'product_name' => $product->get_name(),
+		);
+
+		if ( ! empty( $sku ) && is_string( $sku ) && strlen( trim( $sku ) ) > 0 ) {
+			$sku_to_product_map[ $sku ] = $product_data;
+		}
+		
+		$sku_to_product_map[ $wc_id_sku ] = $product_data;
+
+		// Handle variable products - collect variation SKUs
+		if ( $product->is_type( 'variable' ) ) {
+			$variations = $product->get_children();
+			
+			foreach ( $variations as $variation_id ) {
+				$variation = wc_get_product( $variation_id );
+				if ( ! $variation ) {
+					continue;
+				}
+				
+				$variation_sku = $variation->get_sku();
+				$variation_wc_id = 'WC-' . $variation_id;
+				
+				$variation_data = array(
+					'product' => $variation,
+					'type' => 'variation',
+					'parent_id' => $product_id,
+					'variation_id' => $variation_id,
+					'variation_name' => $variation->get_name(),
+				);
+
+				if ( ! empty( $variation_sku ) && is_string( $variation_sku ) && strlen( trim( $variation_sku ) ) > 0 ) {
+					$sku_to_product_map[ $variation_sku ] = $variation_data;
+				}
+				
+				$sku_to_product_map[ $variation_wc_id ] = $variation_data;
+			}
+		}
+	}
+	
+	// Process the batch
+	try {
+		$result = cachicamoapp_process_single_batch( 
+			$batch_skus, 
+			$sku_to_product_map, 
+			$system_data, 
+			$next_batch->batch_number, 
+			$next_batch->total_batches 
+		);
+		
+		// Update cumulative stats
+		$synced_count = (int) get_option( 'cachicamoapp_last_stock_sync_count', 0 );
+		$error_count = (int) get_option( 'cachicamoapp_last_stock_sync_errors', 0 );
+		$not_found_count = (int) get_option( 'cachicamoapp_last_stock_sync_not_found', 0 );
+		
+		update_option( 'cachicamoapp_last_stock_sync_count', $synced_count + $result['synced'] );
+		update_option( 'cachicamoapp_last_stock_sync_errors', $error_count + $result['errors'] );
+		update_option( 'cachicamoapp_last_stock_sync_not_found', $not_found_count + $result['not_found'] );
+		
+		// Mark batch as completed
+		cachicamoapp_mark_batch_processed( $next_batch->id, 'completed' );
+		
+		// Check if this was the last batch
+		$remaining = cachicamoapp_count_pending_batches();
+		if ( $remaining === 0 ) {
+			// Update last sync time when all batches are done
+			update_option( 'cachicamoapp_last_stock_sync', current_time( 'mysql' ) );
+			
+			cachicamoapp_log( array( 
+				'cachicamoapp_process_next_batch_job -> All batches completed successfully' => array(
+					'total_synced' => get_option( 'cachicamoapp_last_stock_sync_count', 0 ),
+					'total_errors' => get_option( 'cachicamoapp_last_stock_sync_errors', 0 ),
+					'total_not_found' => get_option( 'cachicamoapp_last_stock_sync_not_found', 0 ),
+				)
+			), 'info' );
+		}
+		
+	} catch ( Exception $e ) {
+		cachicamoapp_log( array( 
+			'cachicamoapp_process_next_batch_job -> Exception' => array(
+				'batch_id' => $next_batch->id,
+				'error' => $e->getMessage(),
+			)
+		), 'error' );
+		
+		cachicamoapp_mark_batch_processed( $next_batch->id, 'error', $e->getMessage() );
+	}
+}
+
+/**
  * Update product stock from Cachicamo API using batch endpoint.
  *
  * Synchronizes inventory from Cachicamo to WooCommerce using efficient batch queries.
  * Cachicamo is the source of truth - stock values will always be overwritten.
  *
- * This function processes SKUs in batches of 500 to avoid N+1 queries and improve performance.
- * Suitable for stores with thousands of products.
+ * This function processes SKUs in batches of 500. If multiple batches are needed,
+ * only the first batch is processed immediately, and the rest are queued to be
+ * processed every 1 minute by a scheduled job.
  *
  * @since 1.0.0
  * @return void
  */
 function cachicamoapp_update_stock_from_api() {
+	// Ensure the batch queue table exists
+	cachicamoapp_create_batch_queue_table();
 	$setting = cachicamoapp_setting();
 	if ( ! $setting || empty( $setting['access_token'] ) || empty( $setting['store_uuid'] ) ) {
 		cachicamoapp_log( array( 'cachicamoapp_update_stock_from_api -> Missing configuration' ), 'error' );
@@ -810,232 +1294,143 @@ function cachicamoapp_update_stock_from_api() {
 		)
 	), 'info' );
 
-	$synced_count = 0;
-	$error_count = 0;
-	$not_found_count = 0;
+	// Reset cumulative stats for new sync run
+	update_option( 'cachicamoapp_last_stock_sync_count', 0 );
+	update_option( 'cachicamoapp_last_stock_sync_errors', 0 );
+	update_option( 'cachicamoapp_last_stock_sync_not_found', 0 );
+	
+	// Prepare system data for batch processing
+	$system_data = array(
+		'tax_rates' => $tax_rates,
+		'currency_rates' => $currency_rates,
+		'base_currency_iso' => $base_currency_iso,
+		'to_currency' => $to_currency,
+		'store_config' => $store_config,
+	);
 
 	// Process SKUs in batches of 500
 	$batches = array_chunk( $all_skus, 500 );
-	$batch_number = 0;
-
-	foreach ( $batches as $batch_skus ) {
-		$batch_number++;
-		
-		cachicamoapp_log( array( 
-			'cachicamoapp_update_stock_from_api -> Processing batch' => array(
-				'batch' => $batch_number,
-				'total_batches' => count( $batches ),
-				'skus_in_batch' => count( $batch_skus ),
-			)
-		), 'info' );
-
-		// Call batch endpoint with price (include_virtual=1 to get virtual product prices too)
-		$response = wp_remote_post(
-			CACHICAMO_APP_ENDPOINT . '/inventories/batch/sku?with_price=1&include_virtual=1',
-			array(
-				'headers' => array(
-					'Authorization' => 'Bearer ' . $setting['access_token'],
-					'Content-Type'  => 'application/json',
-					'X-Store-Uuid'  => $setting['store_uuid'],
-				),
-				'body' => json_encode( array(
-					'sku_list' => $batch_skus,
-				) ),
-				'timeout' => 60, // Increased timeout for batch processing
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			cachicamoapp_log( array( 
-				'cachicamoapp_update_stock_from_api -> Batch request failed' => array(
-					'batch' => $batch_number,
-					'error' => $response->get_error_message(),
-				)
-			), 'error' );
-			$error_count += count( $batch_skus );
-			continue;
-		}
-
-		$status_code = wp_remote_retrieve_response_code( $response );
-		if ( $status_code !== 200 ) {
-			cachicamoapp_log( array( 
-				'cachicamoapp_update_stock_from_api -> Batch request failed' => array(
-					'batch' => $batch_number,
-					'status_code' => $status_code,
-					'response' => wp_remote_retrieve_body( $response ),
-				)
-			), 'error' );
-			$error_count += count( $batch_skus );
-			continue;
-		}
-
-		$inventory_data = json_decode( wp_remote_retrieve_body( $response ), true );
-		
-		if ( ! is_array( $inventory_data ) ) {
-			cachicamoapp_log( array( 
-				'cachicamoapp_update_stock_from_api -> Invalid response format' => array(
-					'batch' => $batch_number,
-					'response_body' => wp_remote_retrieve_body( $response ),
-				)
-			), 'error' );
-			$error_count += count( $batch_skus );
-			continue;
-		}
-
-	// Process results and update WooCommerce products
-	$not_found_skus = array();
-	$found_skus = array();
-	$updated_products = array();
-	$received_inventory_items = array(); // Track what we received from API
+	$total_batches = count( $batches );
 	
-	// Log the raw inventory data received from API
 	cachicamoapp_log( array( 
-		'cachicamoapp_update_stock_from_api -> Raw inventory data from API' => array(
-			'batch' => $batch_number,
-			'inventory_items' => $inventory_data,
+		'cachicamoapp_update_stock_from_api -> Preparing batch queue' => array(
+			'total_batches' => $total_batches,
+			'total_skus' => count( $all_skus ),
 		)
 	), 'info' );
 	
-	foreach ( $inventory_data as $inventory_item ) {
-		if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
-			continue;
-		}
-
-		$stock_quantity = floatval( $inventory_item['stock_billable'] );
-		$inventory_skus = $inventory_item['sku_list'];
+	// Clear any existing pending batches
+	cachicamoapp_clear_batch_queue();
+	
+	// If only 1 batch, process it immediately without queuing
+	if ( $total_batches === 1 ) {
+		cachicamoapp_log( array( 'cachicamoapp_update_stock_from_api -> Only 1 batch, processing immediately' ), 'info' );
 		
-		// Track received items with price information
-		$item_log = array(
-			'sku_list' => $inventory_skus,
-			'stock_billable' => $stock_quantity,
+		$result = cachicamoapp_process_single_batch( 
+			$batches[0], 
+			$sku_to_product_map, 
+			$system_data, 
+			1, 
+			1 
 		);
-
-		$item_found = false;
-		// Update all products/variations matching the SKUs
-		foreach ( $inventory_skus as $sku ) {
-			if ( ! isset( $sku_to_product_map[ $sku ] ) ) {
-				continue;
-			}
-
-		$product_data = $sku_to_product_map[ $sku ];
-		$wc_product = $product_data['product'];
-		$product_id = $wc_product->get_id();
-		$is_virtual = $wc_product->is_virtual();
-
-		// Update stock in WooCommerce (only for non-virtual products)
-		// Virtual products cannot have inventory
-		if ( ! $is_virtual ) {
-			// Cachicamo is the source of truth - always overwrite
-			$wc_product->set_manage_stock( true );
-			$wc_product->set_stock_quantity( max( 0, $stock_quantity ) ); // Ensure non-negative
-			$wc_product->set_stock_status( $stock_quantity > 0 ? 'instock' : 'outofstock' );
-		}
-
-		// Update price if included in response
-			if ( isset( $inventory_item['price'] ) && is_array( $inventory_item['price'] ) ) {
-				$price_data = $inventory_item['price'];
-				
-				$retail_price = floatval( $price_data['amount_retail_format']['amount_float'] );
-				
-				// Get currency ISOs for conversion
-				// price_data has amount_retail_format with currency_iso
-				$from_currency = $price_data['amount_retail_format']['currency_iso'];
-
-				// Get tax_uuid from inventory_item level (not from price object)
-				$product_tax_uuid = $inventory_item['tax_uuid'] ?? null;
-
-				// Get tax rate with fallback: product tax -> store default tax -> IVA G code -> 0
-				$tax_rate = cachicamoapp_get_tax_rate_with_fallback( 
-					$tax_rates, 
-					$product_tax_uuid,
-					isset( $store_config['default_tax_uuid'] ) ? $store_config['default_tax_uuid'] : null,
-					$setting['user_uuid'] ?? null
-				);
-				
-				// Apply tax calculation: convert to base currency -> apply tax -> convert to WC currency -> round to 4 decimals
-				$final_price = cachicamoapp_apply_tax_calculation( 
-					$retail_price, 
-					$from_currency, 
-					$tax_rate, 
-					$currency_rates, 
-					$base_currency_iso,
-					$to_currency
-				);
-				
-				if (!$final_price || $final_price < 0.01) {
-					cachicamoapp_log( array( 
-						'cachicamoapp_update_stock_from_api -> Final price is null' => array(
-							'sku' => $sku,
-							'price' => $price_data,
-							'inventory_item' => $inventory_item,
-						)
-					), 'error' );
-					continue;
-				}
-				
-				// Add price information to log
-				$item_log['price_from_api'] = array(
-					'amount' => $retail_price,
-					'price_data' => $price_data['amount_retail_format'],
-					'currency' => $from_currency,
-					'tax_uuid' => $product_tax_uuid,
-					'tax_rate_applied' => $tax_rate,
-				);
-				$item_log['price_calculated'] = array(
-					'final_price' => $final_price,
-					'wc_currency' => $to_currency,
-					'base_currency' => $base_currency_iso,
-				);
-				
-				$wc_product->set_price( $final_price );
-				$wc_product->set_regular_price( $final_price );
-				$wc_product->set_sale_price( $final_price );
-			}
-
-			$wc_product->save();
-
-			$synced_count++;
-			$item_found = true;
-			$found_skus[] = $sku;
-
-			break; // Only update once per inventory item
-		}
 		
-		// Add the item to received inventory items log
-		$received_inventory_items[] = $item_log;
+		// Update stats
+		update_option( 'cachicamoapp_last_stock_sync', current_time( 'mysql' ) );
+		update_option( 'cachicamoapp_last_stock_sync_count', $result['synced'] );
+		update_option( 'cachicamoapp_last_stock_sync_errors', $result['errors'] );
+		update_option( 'cachicamoapp_last_stock_sync_not_found', $result['not_found'] );
 		
-		if ( ! $item_found ) {
-			// None of the SKUs in this inventory item matched any WooCommerce product
-			$not_found_skus = array_merge( $not_found_skus, $inventory_skus );
-		}
-	}
-
-		// Log summary for this batch
 		cachicamoapp_log( array( 
-			'cachicamoapp_update_stock_from_api -> Batch processing summary' => array(
-				'batch' => $batch_number,
-				'items_received' => count( $inventory_data ),
-				'products_updated' => count( $updated_products ),
-				'skus_sent' => $batch_skus,
-				'inventory_items_received' => $received_inventory_items,
+			'cachicamoapp_update_stock_from_api -> Single batch sync completed' => array(
+				'summary' => array(
+					'total_products_processed' => count( $products ),
+					'simple_products' => $simple_count,
+					'variable_products' => $variable_count,
+					'total_variations' => $variation_count,
+				),
+				'skus' => array(
+					'total_skus_collected' => count( $all_skus ),
+					'products_updated' => $result['synced'],
+					'not_found_in_api' => $result['not_found'],
+				),
+				'processing' => array(
+					'batches_processed' => 1,
+					'errors' => $result['errors'],
+				),
+				'timestamp' => current_time( 'mysql' ),
 			)
 		), 'info' );
 		
-		// Count SKUs not returned by API
-		$requested_not_returned = array_diff( $batch_skus, $found_skus );
-		if ( ! empty( $requested_not_returned ) ) {
-			$not_found_count += count( $requested_not_returned );
-		}
+		return;
 	}
-
-	// Update last sync time and stats
-	update_option( 'cachicamoapp_last_stock_sync', current_time( 'mysql' ) );
-	update_option( 'cachicamoapp_last_stock_sync_count', $synced_count );
-	update_option( 'cachicamoapp_last_stock_sync_errors', $error_count );
-	update_option( 'cachicamoapp_last_stock_sync_not_found', $not_found_count );
-
+	
+	// Multiple batches: save all to database
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'cachicamoapp_batch_queue';
+	
+	foreach ( $batches as $batch_number => $batch_skus ) {
+		$wpdb->insert(
+			$table_name,
+			array(
+				'batch_number' => $batch_number + 1,
+				'total_batches' => $total_batches,
+				'sku_list' => json_encode( $batch_skus ),
+				'status' => 'pending',
+				'created_at' => current_time( 'mysql' ),
+			),
+			array( '%d', '%d', '%s', '%s', '%s' )
+		);
+	}
+	
 	cachicamoapp_log( array( 
-		'cachicamoapp_update_stock_from_api -> Batch sync completed' => array(
+		'cachicamoapp_update_stock_from_api -> All batches queued' => array(
+			'total_batches' => $total_batches,
+			'timestamp' => current_time( 'mysql' ),
+		)
+	), 'info' );
+	
+	// Process the first batch immediately
+	$first_batch = cachicamoapp_get_next_pending_batch();
+	if ( $first_batch ) {
+		cachicamoapp_log( array( 
+			'cachicamoapp_update_stock_from_api -> Processing first batch immediately' => array(
+				'batch_id' => $first_batch->id,
+				'batch_number' => $first_batch->batch_number,
+			)
+		), 'info' );
+		
+		$first_batch_skus = json_decode( $first_batch->sku_list, true );
+		$result = cachicamoapp_process_single_batch( 
+			$first_batch_skus, 
+			$sku_to_product_map, 
+			$system_data, 
+			$first_batch->batch_number, 
+			$first_batch->total_batches 
+		);
+		
+		// Update stats
+		update_option( 'cachicamoapp_last_stock_sync_count', $result['synced'] );
+		update_option( 'cachicamoapp_last_stock_sync_errors', $result['errors'] );
+		update_option( 'cachicamoapp_last_stock_sync_not_found', $result['not_found'] );
+		
+		// Mark batch as completed
+		cachicamoapp_mark_batch_processed( $first_batch->id, 'completed' );
+	}
+	
+	// Schedule recurring job to process remaining batches every 1 minute
+	if ( ! wp_next_scheduled( 'cachicamoapp_process_batch_queue' ) ) {
+		wp_schedule_event( time() + 60, 'cachicamoapp_one_minute', 'cachicamoapp_process_batch_queue' );
+		
+		cachicamoapp_log( array( 
+			'cachicamoapp_update_stock_from_api -> Scheduled recurring job' => array(
+				'remaining_batches' => $total_batches - 1,
+				'next_run' => date( 'Y-m-d H:i:s', time() + 60 ),
+			)
+		), 'info' );
+	}
+	
+	cachicamoapp_log( array( 
+		'cachicamoapp_update_stock_from_api -> Initial batch completed, remaining in queue' => array(
 			'summary' => array(
 				'total_products_processed' => count( $products ),
 				'simple_products' => $simple_count,
@@ -1044,12 +1439,11 @@ function cachicamoapp_update_stock_from_api() {
 			),
 			'skus' => array(
 				'total_skus_collected' => count( $all_skus ),
-				'products_updated' => $synced_count,
-				'not_found_in_api' => $not_found_count,
 			),
 			'processing' => array(
-				'batches_processed' => count( $batches ),
-				'errors' => $error_count,
+				'total_batches' => $total_batches,
+				'completed_batches' => 1,
+				'pending_batches' => $total_batches - 1,
 			),
 			'timestamp' => current_time( 'mysql' ),
 		)

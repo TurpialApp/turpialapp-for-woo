@@ -79,6 +79,7 @@ class CachicamoApp_For_Woo {
 	public static function deactivate() {
 		// Clear the scheduled stock update event upon plugin deactivation.
 		wp_clear_scheduled_hook( 'cachicamoapp_update_stock_from_api' );
+		wp_clear_scheduled_hook( 'cachicamoapp_process_batch_queue' );
 	}
 
 	/**
@@ -90,6 +91,9 @@ class CachicamoApp_For_Woo {
 	 * @return void
 	 */
 	private static function init_cron_jobs() {
+		// Add custom cron schedule for 1 minute interval.
+		add_filter( 'cron_schedules', array( self::class, 'add_cron_schedules' ) );
+
 		// Schedule the stock update event upon plugin activation.
 		if ( ! wp_next_scheduled( 'cachicamoapp_update_stock_from_api' ) ) {
 			wp_schedule_single_event( time() + HOUR_IN_SECONDS, 'cachicamoapp_update_stock_from_api' );
@@ -97,5 +101,21 @@ class CachicamoApp_For_Woo {
 
 		// Register cron callbacks.
 		add_action( 'cachicamoapp_update_stock_from_api', 'cachicamoapp_update_stock_from_api' );
+		add_action( 'cachicamoapp_process_batch_queue', 'cachicamoapp_process_next_batch_job' );
+	}
+
+	/**
+	 * Add custom cron schedules
+	 *
+	 * @since 1.0.0
+	 * @param array $schedules Existing cron schedules.
+	 * @return array Modified cron schedules.
+	 */
+	public static function add_cron_schedules( $schedules ) {
+		$schedules['cachicamoapp_one_minute'] = array(
+			'interval' => 60,
+			'display'  => __( 'Every 1 Minute (CachicamoApp)', 'cachicamoapp-for-woo' ),
+		);
+		return $schedules;
 	}
 }

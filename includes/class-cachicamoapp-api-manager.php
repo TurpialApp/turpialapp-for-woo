@@ -151,6 +151,7 @@ class CachicamoApp_API_Manager extends WC_Integration {
 		// Process the admin options and schedule the stock update event.
 		parent::process_admin_options();
 		wp_clear_scheduled_hook( 'cachicamoapp_update_stock_from_api' );
+		wp_clear_scheduled_hook( 'cachicamoapp_process_batch_queue' );
 		$cron_time = (int) preg_replace( '/[^0-9]/', '', $this->get_option( 'cron_time' ) );
 		if ( $cron_time < 10 ) {
 			$cron_time = 720; // Default to 12 hours (720 minutes) if invalid or less than minimum.
@@ -359,12 +360,34 @@ class CachicamoApp_API_Manager extends WC_Integration {
 		$sync_count = get_option( 'cachicamoapp_last_stock_sync_count', 0 );
 		$sync_errors = get_option( 'cachicamoapp_last_stock_sync_errors', 0 );
 		
-		$message = sprintf(
-			// translators: %1$d: number of products synced, %2$d: number of errors.
-			__( 'Sync completed. %1$d products updated. %2$d errors.', 'cachicamoapp-for-woo' ),
-			$sync_count,
-			$sync_errors
-		);
+		// Check if there are pending batches
+		if ( function_exists( 'cachicamoapp_count_pending_batches' ) ) {
+			$pending_batches = cachicamoapp_count_pending_batches();
+			
+			if ( $pending_batches > 0 ) {
+				$message = sprintf(
+					// translators: %1$d: number of products synced, %2$d: number of errors, %3$d: number of pending batches.
+					__( 'First batch completed. %1$d products updated so far. %2$d errors. %3$d batches remaining (processing every minute).', 'cachicamoapp-for-woo' ),
+					$sync_count,
+					$sync_errors,
+					$pending_batches
+				);
+			} else {
+				$message = sprintf(
+					// translators: %1$d: number of products synced, %2$d: number of errors.
+					__( 'Sync completed. %1$d products updated. %2$d errors.', 'cachicamoapp-for-woo' ),
+					$sync_count,
+					$sync_errors
+				);
+			}
+		} else {
+			$message = sprintf(
+				// translators: %1$d: number of products synced, %2$d: number of errors.
+				__( 'Sync completed. %1$d products updated. %2$d errors.', 'cachicamoapp-for-woo' ),
+				$sync_count,
+				$sync_errors
+			);
+		}
 		
 		wp_send_json_success( array( 'message' => $message ) );
 	}
