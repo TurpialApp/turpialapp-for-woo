@@ -115,6 +115,17 @@ class CachicamoApp_API_Manager extends WC_Integration {
 				'title' => __( 'Inventory Synchronization', 'cachicamoapp-for-woo' ),
 				'type'  => 'title',
 			),
+			'price_type'        => array(
+				'title'       => __( 'Price Type', 'cachicamoapp-for-woo' ),
+				'type'        => 'select',
+				'description' => __( 'Select which price to use during synchronization', 'cachicamoapp-for-woo' ),
+				'default'     => 'retail',
+				'options'     => array(
+					'base'      => __( 'Base Price', 'cachicamoapp-for-woo' ),
+					'min_sale'  => __( 'Minimum Sale Price (Wholesale)', 'cachicamoapp-for-woo' ),
+					'retail'    => __( 'Retail Price', 'cachicamoapp-for-woo' ),
+				),
+			),
 			'cron_time'         => array(
 				'title'       => __( 'Sync Interval (minutes)', 'cachicamoapp-for-woo' ),
 				'type'        => 'text',

@@ -858,8 +858,33 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 			if ( isset( $inventory_item['price'] ) && is_array( $inventory_item['price'] ) ) {
 				$price_data = $inventory_item['price'];
 
-				$retail_price = floatval( $price_data['amount_retail_format']['amount_float'] );
-				$from_currency = $price_data['amount_retail_format']['currency_iso'];
+				// Get price type from settings (base, min_sale, or retail)
+				$price_type = isset( $setting['price_type'] ) ? $setting['price_type'] : 'retail';
+				
+				// Map price type to API field name
+				$price_field_map = array(
+					'base'      => 'amount_base_format',
+					'min_sale'  => 'amount_min_sale_format',
+					'retail'    => 'amount_retail_format',
+				);
+				
+				$price_field = isset( $price_field_map[ $price_type ] ) ? $price_field_map[ $price_type ] : 'amount_retail_format';
+					
+				// Check if the selected price type exists in the response
+				if ( ! isset( $price_data[ $price_field ] ) || ! isset( $price_data[ $price_field ]['amount_float'] ) ) {
+					cachicamoapp_log( array(
+						'cachicamoapp_process_single_batch -> Price field not found' => array(
+							'sku_cachicamo' => $sku_cachicamo,
+							'price_type' => $price_type,
+							'price_field' => $price_field,
+							'available_fields' => array_keys( $price_data ),
+						)
+					), 'warning' );
+					continue;
+				}
+				
+				$retail_price = floatval( $price_data[ $price_field ]['amount_float'] );
+				$from_currency = $price_data[ $price_field ]['currency_iso'];
 				$product_tax_uuid = $inventory_item['tax_uuid'] ?? null;
 
 				$tax_rate = cachicamoapp_get_tax_rate_with_fallback(
