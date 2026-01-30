@@ -600,8 +600,7 @@ function cachicamoapp_search_product_by_sku( $sku ) {
 	}
 	
 	$decoded = json_decode( $result['body'], true );
-	cachicamoapp_log( array( 'cachicamoapp_search_product_by_sku[' . $sku . '] -> result' => $decoded ), 'info' );
-	
+
 	if ( isset( $decoded['rows'] ) && is_array( $decoded['rows'] ) ) {
 		// Search through all products and variations
 		foreach ( $decoded['rows'] as $row ) {
@@ -737,12 +736,8 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 	$error_count = 0;
 	$not_found_count = 0;
 	
-	cachicamoapp_log( array( 
-		'cachicamoapp_process_single_batch -> Processing batch' => array(
-			'batch' => $batch_number,
-			'total_batches' => $total_batches,
-			'skus_in_batch' => count( $batch_skus ),
-		)
+	cachicamoapp_log( array(
+		'cachicamoapp_process_single_batch -> Batch ' . $batch_number . '/' . $total_batches => array( 'skus' => count( $batch_skus ) )
 	), 'info' );
 
 	// Call batch endpoint with price (include_virtual=1 to get virtual product prices too)
@@ -812,15 +807,15 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 
 	// Process results and update WooCommerce products
 	$found_skus = array();
-	$received_inventory_items = array();
-	
+	$product_summaries = array();
+
 	// Extract system data
 	$tax_rates = $system_data['tax_rates'];
 	$currency_rates = $system_data['currency_rates'];
 	$base_currency_iso = $system_data['base_currency_iso'];
 	$to_currency = $system_data['to_currency'];
 	$store_config = $system_data['store_config'];
-	
+
 	foreach ( $inventory_data as $inventory_item ) {
 		if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
 			continue;
@@ -828,24 +823,31 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 
 		$stock_quantity = floatval( $inventory_item['stock_billable'] );
 		$inventory_skus = $inventory_item['sku_list'];
-		
-		// Track received items with price information
-		$item_log = array(
-			'sku_list' => $inventory_skus,
-			'stock_billable' => $stock_quantity,
-		);
 
 		$item_found = false;
 		// Update all products/variations matching the SKUs
-		foreach ( $inventory_skus as $sku ) {
-			if ( ! isset( $sku_to_product_map[ $sku ] ) ) {
+		foreach ( $inventory_skus as $sku_cachicamo ) {
+			if ( ! isset( $sku_to_product_map[ $sku_cachicamo ] ) ) {
 				continue;
 			}
 
-			$product_data = $sku_to_product_map[ $sku ];
+			$product_data = $sku_to_product_map[ $sku_cachicamo ];
 			$wc_product = $product_data['product'];
 			$product_id = $wc_product->get_id();
 			$is_virtual = $wc_product->is_virtual();
+
+			// Capture values BEFORE update for log summary
+			$price_prev = $wc_product->get_price();
+			$stock_prev = $is_virtual ? null : $wc_product->get_stock_quantity();
+			$price_final = $price_prev;
+			$stock_final = $is_virtual ? null : $stock_quantity;
+
+			// Build WC identifier: pid for simple, pid + vid for variation
+			$sku_wc = isset( $product_data['variation_id'] )
+				? 'pid:' . $product_data['parent_id'] . ' vid:' . $product_data['variation_id']
+				: 'pid:' . $product_id;
+
+			if 
 
 			// Update stock in WooCommerce (only for non-virtual products)
 			if ( ! $is_virtual ) {
@@ -857,54 +859,38 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 			// Update price if included in response
 			if ( isset( $inventory_item['price'] ) && is_array( $inventory_item['price'] ) ) {
 				$price_data = $inventory_item['price'];
-				
+
 				$retail_price = floatval( $price_data['amount_retail_format']['amount_float'] );
 				$from_currency = $price_data['amount_retail_format']['currency_iso'];
 				$product_tax_uuid = $inventory_item['tax_uuid'] ?? null;
 
-				// Get tax rate with fallback
-				$tax_rate = cachicamoapp_get_tax_rate_with_fallback( 
-					$tax_rates, 
+				$tax_rate = cachicamoapp_get_tax_rate_with_fallback(
+					$tax_rates,
 					$product_tax_uuid,
 					isset( $store_config['default_tax_uuid'] ) ? $store_config['default_tax_uuid'] : null,
 					$setting['user_uuid'] ?? null
 				);
-				
-				// Apply tax calculation
-				$final_price = cachicamoapp_apply_tax_calculation( 
-					$retail_price, 
-					$from_currency, 
-					$tax_rate, 
-					$currency_rates, 
+
+				$final_price = cachicamoapp_apply_tax_calculation(
+					$retail_price,
+					$from_currency,
+					$tax_rate,
+					$currency_rates,
 					$base_currency_iso,
 					$to_currency
 				);
-				
+
 				if ( ! $final_price || $final_price < 0.01 ) {
-					cachicamoapp_log( array( 
+					cachicamoapp_log( array(
 						'cachicamoapp_process_single_batch -> Final price is null' => array(
-							'sku' => $sku,
-							'price' => $price_data,
-							'inventory_item' => $inventory_item,
+							'sku_cachicamo' => $sku_cachicamo,
+							'sku_wc' => $sku_wc,
 						)
 					), 'error' );
 					continue;
 				}
-				
-				// Add price information to log
-				$item_log['price_from_api'] = array(
-					'amount' => $retail_price,
-					'price_data' => $price_data['amount_retail_format'],
-					'currency' => $from_currency,
-					'tax_uuid' => $product_tax_uuid,
-					'tax_rate_applied' => $tax_rate,
-				);
-				$item_log['price_calculated'] = array(
-					'final_price' => $final_price,
-					'wc_currency' => $to_currency,
-					'base_currency' => $base_currency_iso,
-				);
-				
+
+				$price_final = $final_price;
 				$wc_product->set_price( $final_price );
 				$wc_product->set_regular_price( $final_price );
 				$wc_product->set_sale_price( $final_price );
@@ -912,27 +898,35 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 
 			$wc_product->save();
 
+			$product_summaries[] = array(
+				'sku_cachicamo' => $sku_cachicamo,
+				'sku_wc'       => $sku_wc,
+				'price_prev'   => $price_prev !== '' ? floatval( $price_prev ) : null,
+				'price_final'  => $price_final !== '' ? floatval( $price_final ) : null,
+				'stock_prev'   => $stock_prev,
+				'stock_final'  => $stock_final,
+			);
+
 			$synced_count++;
 			$item_found = true;
-			$found_skus[] = $sku;
+			$found_skus[] = $sku_cachicamo;
 
 			break; // Only update once per inventory item
 		}
-		
-		$received_inventory_items[] = $item_log;
-		
+
 		if ( ! $item_found ) {
 			$not_found_count += count( $inventory_skus );
 		}
 	}
 
-	// Log summary for this batch
-	cachicamoapp_log( array( 
-		'cachicamoapp_process_single_batch -> Batch processing summary' => array(
+	// Log compact summary: one line per product + batch totals
+	cachicamoapp_log( array(
+		'cachicamoapp_process_single_batch -> Batch summary' => array(
 			'batch' => $batch_number,
+			'total_batches' => $total_batches,
 			'items_received' => count( $inventory_data ),
 			'products_updated' => $synced_count,
-			'inventory_items_received' => $received_inventory_items,
+			'products' => $product_summaries,
 		)
 	), 'info' );
 	
@@ -966,13 +960,12 @@ function cachicamoapp_process_next_batch_job() {
 		cachicamoapp_log( array( 'cachicamoapp_process_next_batch_job -> All batches completed' ), 'info' );
 		return;
 	}
+
+	// Mark batch as processing
+	cachicamoapp_mark_batch_processed( $next_batch->id, 'processing' );
 	
-	cachicamoapp_log( array( 
-		'cachicamoapp_process_next_batch_job -> Processing batch from queue' => array(
-			'batch_id' => $next_batch->id,
-			'batch_number' => $next_batch->batch_number,
-			'total_batches' => $next_batch->total_batches,
-		)
+	cachicamoapp_log( array(
+		'cachicamoapp_process_next_batch_job -> Batch ' . $next_batch->batch_number . '/' . $next_batch->total_batches => array( 'id' => $next_batch->id )
 	), 'info' );
 	
 	// Pre-load system data
@@ -995,63 +988,75 @@ function cachicamoapp_process_next_batch_job() {
 	// Rebuild SKU to product map for this batch
 	$batch_skus = json_decode( $next_batch->sku_list, true );
 	
-	// Get all WooCommerce products with SKUs
-	$all_products_args = array(
-		'status' => 'publish',
-		'limit'  => -1,
-	);
-	
-	$products = wc_get_products( $all_products_args );
-	
-	// Collect all SKUs and create SKU -> Product mapping
+	// Build SKU to product map only for needed SKUs
 	$sku_to_product_map = array();
 	
-	foreach ( $products as $product ) {
-		$product_id = $product->get_id();
-		$sku = $product->get_sku();
-		$wc_id_sku = 'WC-' . $product_id;
-		$product_type = $product->get_type();
-		
-		$product_data = array(
-			'product' => $product,
-			'type' => 'parent',
-			'product_id' => $product_id,
-			'product_name' => $product->get_name(),
-		);
-
-		if ( ! empty( $sku ) && is_string( $sku ) && strlen( trim( $sku ) ) > 0 ) {
-			$sku_to_product_map[ $sku ] = $product_data;
+	foreach ( $batch_skus as $sku ) {
+		// Skip if already processed
+		if ( isset( $sku_to_product_map[ $sku ] ) ) {
+			continue;
 		}
 		
-		$sku_to_product_map[ $wc_id_sku ] = $product_data;
-
-		// Handle variable products - collect variation SKUs
-		if ( $product->is_type( 'variable' ) ) {
-			$variations = $product->get_children();
-			
-			foreach ( $variations as $variation_id ) {
-				$variation = wc_get_product( $variation_id );
-				if ( ! $variation ) {
-					continue;
-				}
-				
-				$variation_sku = $variation->get_sku();
-				$variation_wc_id = 'WC-' . $variation_id;
-				
-				$variation_data = array(
-					'product' => $variation,
-					'type' => 'variation',
-					'parent_id' => $product_id,
-					'variation_id' => $variation_id,
-					'variation_name' => $variation->get_name(),
-				);
-
-				if ( ! empty( $variation_sku ) && is_string( $variation_sku ) && strlen( trim( $variation_sku ) ) > 0 ) {
-					$sku_to_product_map[ $variation_sku ] = $variation_data;
-				}
-				
-				$sku_to_product_map[ $variation_wc_id ] = $variation_data;
+		$product = null;
+		$is_wc_id = false;
+		
+		// Check if it's a WC-ID format (WC-123 for product ID or variation ID)
+		if ( strpos( $sku, 'WC-' ) === 0 ) {
+			$product_id = intval( substr( $sku, 3 ) );
+			if ( $product_id > 0 ) {
+				$product = wc_get_product( $product_id );
+				$is_wc_id = true;
 			}
+		} else {
+			// It's a regular SKU, search by SKU
+			$product_id = wc_get_product_id_by_sku( $sku );
+			if ( $product_id > 0 ) {
+				$product = wc_get_product( $product_id );
+			}
+		}
+		
+		if ( ! $product ) {
+			continue;
+		}
+		
+		$product_id = $product->get_id();
+		$product_sku = $product->get_sku();
+		$product_type = $product->get_type();
+		
+		// Determine if it's a variation or parent product
+		if ( $product_type === 'variation' ) {
+			$parent_id = $product->get_parent_id();
+			$variation_data = array(
+				'product' => $product,
+				'type' => 'variation',
+				'parent_id' => $parent_id,
+				'variation_id' => $product_id,
+				'variation_name' => $product->get_name(),
+			);
+			
+			// Map by actual SKU
+			if ( ! empty( $product_sku ) && is_string( $product_sku ) && strlen( trim( $product_sku ) ) > 0 ) {
+				$sku_to_product_map[ $product_sku ] = $variation_data;
+			}
+			
+			// Map by WC-ID
+			$sku_to_product_map[ 'WC-' . $product_id ] = $variation_data;
+		} else {
+			// Parent product (simple or variable)
+			$product_data = array(
+				'product' => $product,
+				'type' => 'parent',
+				'product_id' => $product_id,
+				'product_name' => $product->get_name(),
+			);
+			
+			// Map by actual SKU
+			if ( ! empty( $product_sku ) && is_string( $product_sku ) && strlen( trim( $product_sku ) ) > 0 ) {
+				$sku_to_product_map[ $product_sku ] = $product_data;
+			}
+			
+			// Map by WC-ID
+			$sku_to_product_map[ 'WC-' . $product_id ] = $product_data;
 		}
 	}
 	
@@ -1083,11 +1088,11 @@ function cachicamoapp_process_next_batch_job() {
 			// Update last sync time when all batches are done
 			update_option( 'cachicamoapp_last_stock_sync', current_time( 'mysql' ) );
 			
-			cachicamoapp_log( array( 
-				'cachicamoapp_process_next_batch_job -> All batches completed successfully' => array(
-					'total_synced' => get_option( 'cachicamoapp_last_stock_sync_count', 0 ),
-					'total_errors' => get_option( 'cachicamoapp_last_stock_sync_errors', 0 ),
-					'total_not_found' => get_option( 'cachicamoapp_last_stock_sync_not_found', 0 ),
+			cachicamoapp_log( array(
+				'cachicamoapp_process_next_batch_job -> All batches done' => array(
+					'synced' => get_option( 'cachicamoapp_last_stock_sync_count', 0 ),
+					'errors' => get_option( 'cachicamoapp_last_stock_sync_errors', 0 ),
+					'not_found' => get_option( 'cachicamoapp_last_stock_sync_not_found', 0 ),
 				)
 			), 'info' );
 		}
@@ -1140,15 +1145,14 @@ function cachicamoapp_update_stock_from_api() {
 	$base_currency_iso = isset( $base_currency['iso'] ) ? $base_currency['iso'] : 'VES';
 	$to_currency = get_woocommerce_currency(); // WooCommerce store currency (never changes)
 
-	cachicamoapp_log( array( 
-		'cachicamoapp_update_stock_from_api -> System data loaded' => array(
+	// Initial config: tax_rates, store_taxes, currency_rates (kept for reference)
+	cachicamoapp_log( array(
+		'cachicamoapp_update_stock_from_api -> System data (tax_rates, store_taxes, currency_rates)' => array(
 			'tax_rates' => $tax_rates,
 			'store_taxes' => $store_taxes,
 			'currency_rates' => $currency_rates,
-			'base_currency' => $base_currency,
 			'base_currency_iso' => $base_currency_iso,
 			'wc_store_currency' => $to_currency,
-			'store_config' => $store_config,
 		)
 	), 'info' );
 
@@ -1173,10 +1177,10 @@ function cachicamoapp_update_stock_from_api() {
 		$type_breakdown[ $type ]++;
 	}
 	
-	cachicamoapp_log( array( 
+	cachicamoapp_log( array(
 		'cachicamoapp_update_stock_from_api -> Products retrieved' => array(
-			'total_products' => count( $products ),
-			'type_breakdown' => $type_breakdown,
+			'total' => count( $products ),
+			'by_type' => $type_breakdown,
 		)
 	), 'info' );
 	
@@ -1265,32 +1269,12 @@ function cachicamoapp_update_stock_from_api() {
 		return;
 	}
 
-	// Analyze SKU types collected
-	$real_skus_collected = array();
-	$wc_id_skus_collected = array();
-	foreach ( $all_skus as $sku ) {
-		if ( strpos( $sku, 'WC-' ) === 0 ) {
-			$wc_id_skus_collected[] = $sku;
-		} else {
-			$real_skus_collected[] = $sku;
-		}
-	}
-	
-	cachicamoapp_log( array( 
+	cachicamoapp_log( array(
 		'cachicamoapp_update_stock_from_api -> Products collected' => array(
-			'total_products' => count( $products ),
-			'simple_products' => $simple_count,
-			'variable_products' => $variable_count,
-			'total_variations' => $variation_count,
-			'sku_statistics' => array(
-				'products_with_sku' => $products_with_sku,
-				'products_without_sku' => $products_without_sku,
-				'variations_with_sku' => $variations_with_sku,
-				'variations_without_sku' => $variations_without_sku,
-				'total_skus' => count( $all_skus ),
-				'real_skus_count' => count( $real_skus_collected ),
-				'wc_id_skus_count' => count( $wc_id_skus_collected ),
-			),
+			'total_skus' => count( $all_skus ),
+			'simple' => $simple_count,
+			'variable' => $variable_count,
+			'variations' => $variation_count,
 		)
 	), 'info' );
 
@@ -1312,10 +1296,10 @@ function cachicamoapp_update_stock_from_api() {
 	$batches = array_chunk( $all_skus, 500 );
 	$total_batches = count( $batches );
 	
-	cachicamoapp_log( array( 
-		'cachicamoapp_update_stock_from_api -> Preparing batch queue' => array(
-			'total_batches' => $total_batches,
-			'total_skus' => count( $all_skus ),
+	cachicamoapp_log( array(
+		'cachicamoapp_update_stock_from_api -> Batch queue' => array(
+			'batches' => $total_batches,
+			'skus' => count( $all_skus ),
 		)
 	), 'info' );
 	
@@ -1324,7 +1308,7 @@ function cachicamoapp_update_stock_from_api() {
 	
 	// If only 1 batch, process it immediately without queuing
 	if ( $total_batches === 1 ) {
-		cachicamoapp_log( array( 'cachicamoapp_update_stock_from_api -> Only 1 batch, processing immediately' ), 'info' );
+		cachicamoapp_log( array( 'cachicamoapp_update_stock_from_api -> Single batch, processing now' ), 'info' );
 		
 		$result = cachicamoapp_process_single_batch( 
 			$batches[0], 
@@ -1340,24 +1324,11 @@ function cachicamoapp_update_stock_from_api() {
 		update_option( 'cachicamoapp_last_stock_sync_errors', $result['errors'] );
 		update_option( 'cachicamoapp_last_stock_sync_not_found', $result['not_found'] );
 		
-		cachicamoapp_log( array( 
-			'cachicamoapp_update_stock_from_api -> Single batch sync completed' => array(
-				'summary' => array(
-					'total_products_processed' => count( $products ),
-					'simple_products' => $simple_count,
-					'variable_products' => $variable_count,
-					'total_variations' => $variation_count,
-				),
-				'skus' => array(
-					'total_skus_collected' => count( $all_skus ),
-					'products_updated' => $result['synced'],
-					'not_found_in_api' => $result['not_found'],
-				),
-				'processing' => array(
-					'batches_processed' => 1,
-					'errors' => $result['errors'],
-				),
-				'timestamp' => current_time( 'mysql' ),
+		cachicamoapp_log( array(
+			'cachicamoapp_update_stock_from_api -> Sync done' => array(
+				'synced' => $result['synced'],
+				'errors' => $result['errors'],
+				'not_found' => $result['not_found'],
 			)
 		), 'info' );
 		
@@ -1382,49 +1353,18 @@ function cachicamoapp_update_stock_from_api() {
 		);
 	}
 	
-	cachicamoapp_log( array( 
-		'cachicamoapp_update_stock_from_api -> All batches queued' => array(
-			'total_batches' => $total_batches,
-			'timestamp' => current_time( 'mysql' ),
-		)
+	cachicamoapp_log( array(
+		'cachicamoapp_update_stock_from_api -> Batches queued' => array( 'batches' => $total_batches )
 	), 'info' );
-	
-	// Process the first batch immediately
-	$first_batch = cachicamoapp_get_next_pending_batch();
-	if ( $first_batch ) {
-		cachicamoapp_log( array( 
-			'cachicamoapp_update_stock_from_api -> Processing first batch immediately' => array(
-				'batch_id' => $first_batch->id,
-				'batch_number' => $first_batch->batch_number,
-			)
-		), 'info' );
-		
-		$first_batch_skus = json_decode( $first_batch->sku_list, true );
-		$result = cachicamoapp_process_single_batch( 
-			$first_batch_skus, 
-			$sku_to_product_map, 
-			$system_data, 
-			$first_batch->batch_number, 
-			$first_batch->total_batches 
-		);
-		
-		// Update stats
-		update_option( 'cachicamoapp_last_stock_sync_count', $result['synced'] );
-		update_option( 'cachicamoapp_last_stock_sync_errors', $result['errors'] );
-		update_option( 'cachicamoapp_last_stock_sync_not_found', $result['not_found'] );
-		
-		// Mark batch as completed
-		cachicamoapp_mark_batch_processed( $first_batch->id, 'completed' );
-	}
 	
 	// Schedule recurring job to process remaining batches every 1 minute
 	if ( ! wp_next_scheduled( 'cachicamoapp_process_batch_queue' ) ) {
-		wp_schedule_event( time() + 60, 'cachicamoapp_one_minute', 'cachicamoapp_process_batch_queue' );
+		wp_schedule_event( time() + 10, 'cachicamoapp_one_minute', 'cachicamoapp_process_batch_queue' );
 		
 		cachicamoapp_log( array( 
 			'cachicamoapp_update_stock_from_api -> Scheduled recurring job' => array(
-				'remaining_batches' => $total_batches - 1,
-				'next_run' => date( 'Y-m-d H:i:s', time() + 60 ),
+				'remaining_batches' => $total_batches,
+				'next_run' => date( 'Y-m-d H:i:s', time() + 10 ),
 			)
 		), 'info' );
 	}
@@ -1442,8 +1382,6 @@ function cachicamoapp_update_stock_from_api() {
 			),
 			'processing' => array(
 				'total_batches' => $total_batches,
-				'completed_batches' => 1,
-				'pending_batches' => $total_batches - 1,
 			),
 			'timestamp' => current_time( 'mysql' ),
 		)

@@ -49,9 +49,13 @@ function cachicamoapp_handle_webhook( WP_REST_Request $request ) {
 
 	// Get webhook data
 	$webhook_data = $request->get_json_params();
-	
-	// Log the webhook for debugging
-	cachicamoapp_log( array( 'cachicamoapp_handle_webhook -> Received webhook' => $webhook_data ), 'info' );
+
+	cachicamoapp_log( array(
+		'cachicamoapp_handle_webhook -> Received' => array(
+			'order_id' => isset( $webhook_data['id'] ) ? $webhook_data['id'] : null,
+			'status'   => isset( $webhook_data['status'] ) ? $webhook_data['status'] : null,
+		)
+	), 'info' );
 
 	// Prepare data to send to Cachicamo
 	$cachicamo_data = array(
@@ -108,13 +112,9 @@ function cachicamoapp_handle_webhook( WP_REST_Request $request ) {
 	}
 
 	$response_code = wp_remote_retrieve_response_code( $result );
-	$response_body = wp_remote_retrieve_body( $result );
 
-	cachicamoapp_log( array( 
-		'cachicamoapp_handle_webhook -> Response from Cachicamo' => array(
-			'code' => $response_code,
-			'body' => $response_body,
-		)
+	cachicamoapp_log( array(
+		'cachicamoapp_handle_webhook -> Cachicamo response' => array( 'code' => $response_code )
 	), 'info' );
 
 	return new WP_REST_Response(
