@@ -124,7 +124,7 @@ function cachicamoapp_get_user_configuration() {
 	$setting = cachicamoapp_setting();
 
 	$result = wp_remote_get(
-		CACHICAMO_APP_ENDPOINT . '/user/configuration',
+		CACHICAMO_APP_ENDPOINT . '/users/configuration',
 		array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $setting['access_token'],
@@ -169,11 +169,12 @@ function cachicamoapp_get_store_configuration() {
 	$setting = cachicamoapp_setting();
 
 	$result = wp_remote_get(
-		CACHICAMO_APP_ENDPOINT . '/store/' . $setting['store_uuid'] . '/configuration',
+		CACHICAMO_APP_ENDPOINT . '/stores/configuration',
 		array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $setting['access_token'],
 				'Content-Type'  => 'application/json',
+				'X-Store-Uuid'  => $setting['store_uuid'],
 			),
 		)
 	);
@@ -657,11 +658,13 @@ function cachicamoapp_update_stock_from_api() {
 
 	cachicamoapp_log( array( 
 		'cachicamoapp_update_stock_from_api -> System data loaded' => array(
-			'tax_rates_count' => count( $tax_rates ?? array() ),
-			'store_taxes_count' => count( $store_taxes ?? array() ),
-			'currency_rates_count' => count( $currency_rates ?? array() ),
+			'tax_rates' => $tax_rates,
+			'store_taxes' => $store_taxes,
+			'currency_rates' => $currency_rates,
+			'base_currency' => $base_currency,
 			'base_currency_iso' => $base_currency_iso,
 			'wc_store_currency' => $to_currency,
+			'store_config' => $store_config,
 		)
 	), 'info' );
 
@@ -885,6 +888,14 @@ function cachicamoapp_update_stock_from_api() {
 	$updated_products = array();
 	$received_inventory_items = array(); // Track what we received from API
 	
+	// Log the raw inventory data received from API
+	cachicamoapp_log( array( 
+		'cachicamoapp_update_stock_from_api -> Raw inventory data from API' => array(
+			'batch' => $batch_number,
+			'inventory_items' => $inventory_data,
+		)
+	), 'info' );
+	
 	foreach ( $inventory_data as $inventory_item ) {
 		if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
 			continue;
@@ -893,8 +904,8 @@ function cachicamoapp_update_stock_from_api() {
 		$stock_quantity = floatval( $inventory_item['stock_billable'] );
 		$inventory_skus = $inventory_item['sku_list'];
 		
-		// Track received items
-		$received_inventory_items[] = array(
+		// Track received items with price information
+		$item_log = array(
 			'sku_list' => $inventory_skus,
 			'stock_billable' => $stock_quantity,
 		);
@@ -930,10 +941,13 @@ function cachicamoapp_update_stock_from_api() {
 				// price_data has amount_retail_format with currency_iso
 				$from_currency = $price_data['amount_retail_format']['currency_iso'];
 
+				// Get tax_uuid from inventory_item level (not from price object)
+				$product_tax_uuid = $inventory_item['tax_uuid'] ?? null;
+
 				// Get tax rate with fallback: product tax -> store default tax -> IVA G code -> 0
 				$tax_rate = cachicamoapp_get_tax_rate_with_fallback( 
 					$tax_rates, 
-					$price_data['tax_uuid'] ?? null,
+					$product_tax_uuid,
 					isset( $store_config['default_tax_uuid'] ) ? $store_config['default_tax_uuid'] : null,
 					$setting['user_uuid'] ?? null
 				);
@@ -953,10 +967,26 @@ function cachicamoapp_update_stock_from_api() {
 						'cachicamoapp_update_stock_from_api -> Final price is null' => array(
 							'sku' => $sku,
 							'price' => $price_data,
+							'inventory_item' => $inventory_item,
 						)
 					), 'error' );
 					continue;
 				}
+				
+				// Add price information to log
+				$item_log['price_from_api'] = array(
+					'amount' => $retail_price,
+					'price_data' => $price_data['amount_retail_format'],
+					'currency' => $from_currency,
+					'tax_uuid' => $product_tax_uuid,
+					'tax_rate_applied' => $tax_rate,
+				);
+				$item_log['price_calculated'] = array(
+					'final_price' => $final_price,
+					'wc_currency' => $to_currency,
+					'base_currency' => $base_currency_iso,
+				);
+				
 				$wc_product->set_price( $final_price );
 				$wc_product->set_regular_price( $final_price );
 				$wc_product->set_sale_price( $final_price );
@@ -970,6 +1000,9 @@ function cachicamoapp_update_stock_from_api() {
 
 			break; // Only update once per inventory item
 		}
+		
+		// Add the item to received inventory items log
+		$received_inventory_items[] = $item_log;
 		
 		if ( ! $item_found ) {
 			// None of the SKUs in this inventory item matched any WooCommerce product
