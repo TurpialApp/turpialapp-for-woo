@@ -14,7 +14,222 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Get all available currencies from Cachicamo API.
+ * Get tax rate with fallback logic.
+ *
+ * Fallback order:
+ * 1. Get tax rate from product's tax_uuid
+ * 2. If not found, use store's default tax rate
+ * 3. If still not found, search for IVA (VAT) family with "G" tax code (standard IVA)
+ * 4. If nothing found, default to 0 (no tax)
+ *
+ * @since 1.0.0
+ * @param array  $tax_rates Tax rates array from Cachicamo API.
+ * @param string $product_tax_uuid Product's tax UUID.
+ * @param string $store_default_tax_uuid Store's default tax UUID.
+ * @param string $user_uuid User UUID for fallback tax search.
+ * @return float Tax rate as 1-100 percentage (e.g., 16 for 16% tax).
+ */
+function cachicamoapp_get_tax_rate_with_fallback( $tax_rates, $product_tax_uuid, $store_default_tax_uuid, $user_uuid ) {
+	$tax_rate = 0; // Default: no tax
+
+	// Step 1: Try to get product's specific tax rate
+	if ( $product_tax_uuid && isset( $tax_rates[ $product_tax_uuid ] ) ) {
+		return floatval( $tax_rates[ $product_tax_uuid ]['tax_rate'] );
+	}
+
+	// Step 2: Try to use store's default tax
+	if ( $store_default_tax_uuid && isset( $tax_rates[ $store_default_tax_uuid ] ) ) {
+		return floatval( $tax_rates[ $store_default_tax_uuid ]['tax_rate'] );
+	}
+
+	// Step 3: Search for IVA (VAT) with "G" tax code (standard IVA in Venezuela)
+	// This is a common fallback for missing tax configuration
+	foreach ( $tax_rates as $tax_uuid => $tax_data ) {
+		if ( 
+			isset( $tax_data['tax_family'] ) && $tax_data['tax_family'] === 'IVA' &&
+			isset( $tax_data['tax_code'] ) && strtoupper( $tax_data['tax_code'] ) === 'G'
+		) {
+			return floatval( $tax_data['tax_rate'] );
+		}
+	}
+
+	// Step 4: No tax found, return 0 (no tax)
+	return $tax_rate;
+}
+
+/**
+ * Apply tax calculation to a price.
+ * 1. Convert price to store base currency and round to 2 decimals
+ * 2. Apply tax (multiply by 1 + (tax_rate/100))
+ * 3. Apply exchange rate
+ * 4. Round to 4 decimals
+ *
+ * @since 1.0.0
+ * @param float  $price Price amount.
+ * @param string $currency_iso Currency ISO of the price (e.g., 'USD').
+ * @param float  $tax_rate Tax rate as percentage (e.g., 16 for 16% tax, stored as 1-100).
+ * @param array  $currency_rates Currency rates array from Cachicamo.
+ * @param string $base_currency_iso Base currency ISO from user configuration (REQUIRED).
+ * @param string $wc_currency WooCommerce store currency ISO (REQUIRED).
+ * @return float Final price with tax applied, rounded to 4 decimals.
+ */
+function cachicamoapp_apply_tax_calculation( $price, $currency_iso, $tax_rate, $currency_rates, $base_currency_iso, $wc_currency ) {
+
+	// Step 1: Convert price to base currency if needed and round to 2 decimals
+	$price_in_base = $price;
+	
+	if ( $currency_iso !== $base_currency_iso ) {
+		// Need to convert from $currency_iso to $base_currency_iso
+		$price_in_base = cachicamoapp_convert_price_by_currency( $price, $currency_iso, $base_currency_iso, $currency_rates );
+	}
+	
+	// Round to 2 decimals
+	$price_in_base = round( $price_in_base, 2 );
+	
+	// Step 2: Apply tax (multiply by 1 + (tax_rate/100))
+	// Note: tax_rate is stored as 1-100 (e.g., 16 for 16% tax)
+	$price_with_tax = $price_in_base * ( 1 + ( $tax_rate / 100 ) );
+	
+	// Step 3 & 4: Apply exchange rate and round to 4 decimals
+	// Note: At this point we have price in base currency with tax applied
+	// If WooCommerce currency is different from base, we need to convert
+	$final_price = $price_with_tax;
+	if ( $wc_currency !== $base_currency_iso ) {
+		$final_price = cachicamoapp_convert_price_by_currency( $price_with_tax, $base_currency_iso, $wc_currency, $currency_rates );
+	}
+	
+	// Round to 4 decimals for final precision
+	$final_price = round( $final_price, 4 );
+	
+	return $final_price;
+}
+
+/**
+ * Get user configuration from Cachicamo API including base currency.
+ *
+ * @since 1.0.0
+ * @return array|null User configuration with base_currency_uuid or null on error.
+ */
+function cachicamoapp_get_user_configuration() {
+	$key = cachicamoapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
+	$cache_key = 'wc_capp_user_config_' . $key;
+	$cache     = get_transient( $cache_key );
+	if ( $cache ) {
+		return 'error' === $cache ? null : $cache;
+	}
+
+	$setting = cachicamoapp_setting();
+
+	$result = wp_remote_get(
+		CACHICAMO_APP_ENDPOINT . '/user/configuration',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $setting['access_token'],
+				'Content-Type'  => 'application/json',
+			),
+		)
+	);
+	if ( is_wp_error( $result ) ) {
+		cachicamoapp_log( array( 'cachicamoapp_get_user_configuration -> error' => $result ), 'error' );
+		set_transient( $cache_key, 'error', 60 );
+		return null;
+	}
+
+	$decoded = json_decode( $result['body'], true );
+	if ( isset( $decoded['base_currency_uuid'] ) ) {
+		set_transient( $cache_key, $decoded, 3600 * 24 ); // Cache for 24 hours
+		return $decoded;
+	}
+
+	cachicamoapp_log( array( 'cachicamoapp_get_user_configuration -> error' => $decoded ), 'error' );
+	set_transient( $cache_key, 'error', 60 );
+	return null;
+}
+
+/**
+ * Get store configuration from Cachicamo API including default tax.
+ *
+ * @since 1.0.0
+ * @return array|null Store configuration with default_tax_uuid or null on error.
+ */
+function cachicamoapp_get_store_configuration() {
+	$key = cachicamoapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
+	$cache_key = 'wc_capp_store_config_' . $key;
+	$cache     = get_transient( $cache_key );
+	if ( $cache ) {
+		return 'error' === $cache ? null : $cache;
+	}
+
+	$setting = cachicamoapp_setting();
+
+	$result = wp_remote_get(
+		CACHICAMO_APP_ENDPOINT . '/store/' . $setting['store_uuid'] . '/configuration',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $setting['access_token'],
+				'Content-Type'  => 'application/json',
+			),
+		)
+	);
+	if ( is_wp_error( $result ) ) {
+		cachicamoapp_log( array( 'cachicamoapp_get_store_configuration -> error' => $result ), 'error' );
+		set_transient( $cache_key, 'error', 60 );
+		return null;
+	}
+
+	$decoded = json_decode( $result['body'], true );
+	if ( isset( $decoded['default_tax_uuid'] ) ) {
+		set_transient( $cache_key, $decoded, 3600 * 24 ); // Cache for 24 hours
+		return $decoded;
+	}
+
+	cachicamoapp_log( array( 'cachicamoapp_get_store_configuration -> error' => $decoded ), 'error' );
+	set_transient( $cache_key, 'error', 60 );
+	return null;
+}
+
+/**
+ * Get base currency UUID and info for the store.
+ *
+ * @since 1.0.0
+ * @return array|null Array with 'uuid' and 'iso' keys or null on error.
+ */
+function cachicamoapp_get_base_currency() {
+	$user_config = cachicamoapp_get_user_configuration();
+	if ( ! $user_config || ! isset( $user_config['base_currency_uuid'] ) ) {
+		cachicamoapp_log( array( 'cachicamoapp_get_base_currency -> no base_currency_uuid' => true ), 'error' );
+		return null;
+	}
+
+	$base_currency_uuid = $user_config['base_currency_uuid'];
+	$all_currencies = cachicamoapp_get_all_currencies();
+	
+	if ( ! $all_currencies ) {
+		return array( 'uuid' => $base_currency_uuid );
+	}
+
+	// Find currency info by UUID
+	foreach ( $all_currencies as $iso => $currency_data ) {
+		if ( isset( $currency_data['uuid'] ) && $currency_data['uuid'] === $base_currency_uuid ) {
+			return array(
+				'uuid' => $base_currency_uuid,
+				'iso'  => $iso,
+				'data' => $currency_data,
+			);
+		}
+	}
+
+	return array( 'uuid' => $base_currency_uuid );
+}
+
+/**
+ * Get all currencies from Cachicamo API.
  *
  * @since 1.0.0
  * @return array|null Array of currencies or null on error.
@@ -56,6 +271,215 @@ function cachicamoapp_get_all_currencies() {
 	cachicamoapp_log( array( 'cachicamoapp_get_all_currencies -> error' => $decoded ), 'error' );
 	set_transient( $cache_key, 'error', 60 ); // Cache error for 1 minute.
 	return array();
+}
+
+/**
+ * Get currency exchange rates from Cachicamo API.
+ *
+ * @since 1.0.0
+ * @return array Array mapping ISO3 codes to exchange rates (e.g., ['USD' => 1.0, 'EUR' => 0.92])
+ */
+function cachicamoapp_get_currency_rates() {
+	$key = cachicamoapp_access_token_key();
+	if ( ! $key ) {
+		return array();
+	}
+	$cache_key = 'wc_capp_currency_rates_' . $key;
+	$cache     = get_transient( $cache_key );
+	if ( $cache ) {
+		return 'error' === $cache ? array() : $cache; // Return cached currency rates if available.
+	}
+
+	$setting = cachicamoapp_setting();
+
+	$result = wp_remote_get(
+		CACHICAMO_APP_ENDPOINT . '/currencies/rates',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $setting['access_token'],
+				'Content-Type'  => 'application/json',
+				'X-Store-Uuid'  => $setting['store_uuid'],
+			),
+		)
+	);
+	if ( is_wp_error( $result ) ) {
+		cachicamoapp_log( array( 'cachicamoapp_get_currency_rates -> error' => $result ), 'error' );
+		return array();
+	}
+
+	$decoded = json_decode( $result['body'], true );
+	$rates_map = array();
+
+	// Extract rates from both system_rates and user_rates
+	// Structure: { "system_rates": { "USD": { "rate": 1.0 }, ... }, "user_rates": { "EUR": { "rate": 0.92 }, ... } }
+	if ( is_array( $decoded ) ) {
+		// Process system rates first
+		if ( isset( $decoded['system_rates'] ) && is_array( $decoded['system_rates'] ) ) {
+			foreach ( $decoded['system_rates'] as $iso => $rate_data ) {
+				if ( isset( $rate_data['rate'] ) ) {
+					$rates_map[ $iso ] = floatval( $rate_data['rate'] );
+				}
+			}
+		}
+
+		// Process user rates (these override system rates if present)
+		if ( isset( $decoded['user_rates'] ) && is_array( $decoded['user_rates'] ) ) {
+			foreach ( $decoded['user_rates'] as $iso => $rate_data ) {
+				if ( isset( $rate_data['rate'] ) ) {
+					$rates_map[ $iso ] = floatval( $rate_data['rate'] );
+				}
+			}
+		}
+	}
+
+	if ( ! empty( $rates_map ) ) {
+		set_transient( $cache_key, $rates_map, 3600 * 6 ); // Cache for 6 hours.
+		return $rates_map;
+	}
+
+	cachicamoapp_log( array( 'cachicamoapp_get_currency_rates -> error or empty' => $decoded ), 'error' );
+	set_transient( $cache_key, 'error', 60 ); // Cache error for 1 minute.
+	return array();
+}
+
+/**
+ * Get all tax rates from Cachicamo API.
+ *
+ * @since 1.0.0
+ * @return array|null Array of tax rates or null on error.
+ */
+function cachicamoapp_get_all_tax_rates() {
+	$key = cachicamoapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
+	$cache_key = 'wc_capp_tax_rates_' . $key;
+	$cache     = get_transient( $cache_key );
+	if ( $cache ) {
+		return 'error' === $cache ? array() : $cache; // Return cached tax rates if available.
+	}
+
+	$setting = cachicamoapp_setting();
+
+	$result = wp_remote_get(
+		CACHICAMO_APP_ENDPOINT . '/taxes',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $setting['access_token'],
+				'Content-Type'  => 'application/json',
+				'X-Store-Uuid'  => $setting['store_uuid'],
+			),
+		)
+	);
+	if ( is_wp_error( $result ) ) {
+		cachicamoapp_log( array( 'cachicamoapp_get_all_tax_rates -> error' => $result ), 'error' );
+		return null;
+	}
+
+	$decoded = json_decode( $result['body'], true );
+	if ( is_array( $decoded ) && count( $decoded ) > 0 ) {
+		set_transient( $cache_key, $decoded, 3600 * 24 * 7 ); // Cache for 7 days.
+		return $decoded;
+	}
+
+	cachicamoapp_log( array( 'cachicamoapp_get_all_tax_rates -> error or empty' => $decoded ), 'error' );
+	set_transient( $cache_key, 'error', 60 ); // Cache error for 1 minute.
+	return array();
+}
+
+/**
+ * Get all taxes for current store from Cachicamo API.
+ *
+ * @since 1.0.0
+ * @return array|null Array of taxes or null on error.
+ */
+function cachicamoapp_get_store_taxes() {
+	$key = cachicamoapp_access_token_key();
+	if ( ! $key ) {
+		return null;
+	}
+	$cache_key = 'wc_capp_store_taxes_' . $key;
+	$cache     = get_transient( $cache_key );
+	if ( $cache ) {
+		return 'error' === $cache ? array() : $cache; // Return cached store taxes if available.
+	}
+
+	$setting = cachicamoapp_setting();
+
+	$result = wp_remote_get(
+		CACHICAMO_APP_ENDPOINT . '/taxes/store',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $setting['access_token'],
+				'Content-Type'  => 'application/json',
+				'X-Store-Uuid'  => $setting['store_uuid'],
+			),
+		)
+	);
+	if ( is_wp_error( $result ) ) {
+		cachicamoapp_log( array( 'cachicamoapp_get_store_taxes -> error' => $result ), 'error' );
+		return null;
+	}
+
+	$decoded = json_decode( $result['body'], true );
+	if ( is_array( $decoded ) && count( $decoded ) > 0 ) {
+		set_transient( $cache_key, $decoded, 3600 * 24 * 7 ); // Cache for 7 days.
+		return $decoded;
+	}
+
+	cachicamoapp_log( array( 'cachicamoapp_get_store_taxes -> error or empty' => $decoded ), 'error' );
+	set_transient( $cache_key, 'error', 60 ); // Cache error for 1 minute.
+	return array();
+}
+
+/**
+ * Convert price between two currencies using exchange rates.
+ *
+ * All exchange rates are relative to USD, but this function works for any currency pair.
+ * Formula: amount * (rate_to / rate_from)
+ *
+ * @since 1.0.0
+ * @param float   $price Amount to convert.
+ * @param string  $from_iso ISO code of source currency (e.g., 'EUR', 'VES').
+ * @param string  $to_iso ISO code of target currency (e.g., 'USD', 'EUR').
+ * @param array   $currency_rates Array mapping ISO codes to exchange rates (all relative to USD).
+ * @return float Converted price. Returns original price if conversion fails.
+ */
+function cachicamoapp_convert_price_by_currency( $price, $from_iso, $to_iso, $currency_rates ) {
+	$from_iso = strtoupper($from_iso);
+	$to_iso = strtoupper($to_iso);
+	
+	if (in_array($from_iso, ['VEF', 'VEB', 'VES'])) {
+		$from_iso = 'VES';
+	}
+
+	if (in_array($to_iso, ['VEF', 'VEB', 'VES'])) {
+		$to_iso = 'VES';
+	}
+	
+	// If currencies are the same, no conversion needed
+	if ( $from_iso === $to_iso ) {
+		return $price;
+	}
+
+	// Get rates for both currencies (all rates are relative to USD)
+	$rate_from = $currency_rates[ $from_iso ] ?? null;
+	$rate_to = $currency_rates[ $to_iso ] ?? null;
+
+	// If either rate is missing, return original price
+	if ( ! $rate_from || ! $rate_to ) {
+		cachicamoapp_log( array(
+			'cachicamoapp_convert_price_by_currency -> Missing exchange rate' => array(
+				'from' => $from_iso,
+				'to' => $to_iso,
+				'rate_from' => $rate_from,
+				'rate_to' => $rate_to,
+			)
+		), 'warning' );
+		return null;
+	}
+
+	return $price * ( $rate_to / $rate_from );
 }
 
 /**
@@ -219,6 +643,28 @@ function cachicamoapp_update_stock_from_api() {
 
 	cachicamoapp_log( array( 'cachicamoapp_update_stock_from_api -> Starting batch stock sync' ), 'info' );
 
+	// Pre-load system data for calculations
+	$tax_rates = cachicamoapp_get_all_tax_rates();
+	$store_taxes = cachicamoapp_get_store_taxes();
+	$currency_rates = cachicamoapp_get_currency_rates();
+	$base_currency = cachicamoapp_get_base_currency();
+	$store_config = cachicamoapp_get_store_configuration();
+	
+	// Extract base currency info once (never changes during loop execution)
+	$base_currency_uuid = $base_currency ? $base_currency['uuid'] : null;
+	$base_currency_iso = isset( $base_currency['iso'] ) ? $base_currency['iso'] : 'VES';
+	$to_currency = get_woocommerce_currency(); // WooCommerce store currency (never changes)
+
+	cachicamoapp_log( array( 
+		'cachicamoapp_update_stock_from_api -> System data loaded' => array(
+			'tax_rates_count' => count( $tax_rates ?? array() ),
+			'store_taxes_count' => count( $store_taxes ?? array() ),
+			'currency_rates_count' => count( $currency_rates ?? array() ),
+			'base_currency_iso' => $base_currency_iso,
+			'wc_store_currency' => $to_currency,
+		)
+	), 'info' );
+
 	// Get all WooCommerce products with SKUs
 	// Query ALL product types to ensure we don't miss anything
 	// Common WooCommerce product types: simple, variable, variation, grouped, external, bundle, composite, subscription
@@ -380,9 +826,9 @@ function cachicamoapp_update_stock_from_api() {
 			)
 		), 'info' );
 
-		// Call batch endpoint
+		// Call batch endpoint with price (include_virtual=1 to get virtual product prices too)
 		$response = wp_remote_post(
-			CACHICAMO_APP_ENDPOINT . '/inventories/batch/sku',
+			CACHICAMO_APP_ENDPOINT . '/inventories/batch/sku?with_price=1&include_virtual=1',
 			array(
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $setting['access_token'],
@@ -433,56 +879,103 @@ function cachicamoapp_update_stock_from_api() {
 			continue;
 		}
 
-		// Process results and update WooCommerce products
-		$not_found_skus = array();
-		$found_skus = array();
-		$updated_products = array();
-		$received_inventory_items = array(); // Track what we received from API
+	// Process results and update WooCommerce products
+	$not_found_skus = array();
+	$found_skus = array();
+	$updated_products = array();
+	$received_inventory_items = array(); // Track what we received from API
+	
+	foreach ( $inventory_data as $inventory_item ) {
+		if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
+			continue;
+		}
+
+		$stock_quantity = floatval( $inventory_item['stock_billable'] );
+		$inventory_skus = $inventory_item['sku_list'];
 		
-		foreach ( $inventory_data as $inventory_item ) {
-			if ( ! isset( $inventory_item['sku_list'] ) || ! isset( $inventory_item['stock_billable'] ) ) {
+		// Track received items
+		$received_inventory_items[] = array(
+			'sku_list' => $inventory_skus,
+			'stock_billable' => $stock_quantity,
+		);
+
+		$item_found = false;
+		// Update all products/variations matching the SKUs
+		foreach ( $inventory_skus as $sku ) {
+			if ( ! isset( $sku_to_product_map[ $sku ] ) ) {
 				continue;
 			}
 
-			$stock_quantity = floatval( $inventory_item['stock_billable'] );
-			$inventory_skus = $inventory_item['sku_list'];
-			
-			// Track received items
-			$received_inventory_items[] = array(
-				'sku_list' => $inventory_skus,
-				'stock_billable' => $stock_quantity,
-			);
+		$product_data = $sku_to_product_map[ $sku ];
+		$wc_product = $product_data['product'];
+		$product_id = $wc_product->get_id();
+		$is_virtual = $wc_product->is_virtual();
 
-			$item_found = false;
-			// Update all products/variations matching the SKUs
-			foreach ( $inventory_skus as $sku ) {
-				if ( ! isset( $sku_to_product_map[ $sku ] ) ) {
+		// Update stock in WooCommerce (only for non-virtual products)
+		// Virtual products cannot have inventory
+		if ( ! $is_virtual ) {
+			// Cachicamo is the source of truth - always overwrite
+			$wc_product->set_manage_stock( true );
+			$wc_product->set_stock_quantity( max( 0, $stock_quantity ) ); // Ensure non-negative
+			$wc_product->set_stock_status( $stock_quantity > 0 ? 'instock' : 'outofstock' );
+		}
+
+		// Update price if included in response
+			if ( isset( $inventory_item['price'] ) && is_array( $inventory_item['price'] ) ) {
+				$price_data = $inventory_item['price'];
+				
+				$retail_price = floatval( $price_data['amount_retail_format']['amount_float'] );
+				
+				// Get currency ISOs for conversion
+				// price_data has amount_retail_format with currency_iso
+				$from_currency = $price_data['amount_retail_format']['currency_iso'];
+
+				// Get tax rate with fallback: product tax -> store default tax -> IVA G code -> 0
+				$tax_rate = cachicamoapp_get_tax_rate_with_fallback( 
+					$tax_rates, 
+					$price_data['tax_uuid'] ?? null,
+					isset( $store_config['default_tax_uuid'] ) ? $store_config['default_tax_uuid'] : null,
+					$setting['user_uuid'] ?? null
+				);
+				
+				// Apply tax calculation: convert to base currency -> apply tax -> convert to WC currency -> round to 4 decimals
+				$final_price = cachicamoapp_apply_tax_calculation( 
+					$retail_price, 
+					$from_currency, 
+					$tax_rate, 
+					$currency_rates, 
+					$base_currency_iso,
+					$to_currency
+				);
+				
+				if (!$final_price || $final_price < 0.01) {
+					cachicamoapp_log( array( 
+						'cachicamoapp_update_stock_from_api -> Final price is null' => array(
+							'sku' => $sku,
+							'price' => $price_data,
+						)
+					), 'error' );
 					continue;
 				}
-
-				$product_data = $sku_to_product_map[ $sku ];
-				$wc_product = $product_data['product'];
-				$product_id = $wc_product->get_id();
-
-				// Update stock in WooCommerce
-				// Cachicamo is the source of truth - always overwrite
-				$wc_product->set_manage_stock( true );
-				$wc_product->set_stock_quantity( max( 0, $stock_quantity ) ); // Ensure non-negative
-				$wc_product->set_stock_status( $stock_quantity > 0 ? 'instock' : 'outofstock' );
-				$wc_product->save();
-
-				$synced_count++;
-				$item_found = true;
-				$found_skus[] = $sku;
-
-				break; // Only update once per inventory item
+				$wc_product->set_price( $final_price );
+				$wc_product->set_regular_price( $final_price );
+				$wc_product->set_sale_price( $final_price );
 			}
-			
-			if ( ! $item_found ) {
-				// None of the SKUs in this inventory item matched any WooCommerce product
-				$not_found_skus = array_merge( $not_found_skus, $inventory_skus );
-			}
+
+			$wc_product->save();
+
+			$synced_count++;
+			$item_found = true;
+			$found_skus[] = $sku;
+
+			break; // Only update once per inventory item
 		}
+		
+		if ( ! $item_found ) {
+			// None of the SKUs in this inventory item matched any WooCommerce product
+			$not_found_skus = array_merge( $not_found_skus, $inventory_skus );
+		}
+	}
 
 		// Log summary for this batch
 		cachicamoapp_log( array( 
