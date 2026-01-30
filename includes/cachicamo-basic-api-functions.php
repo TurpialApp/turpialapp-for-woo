@@ -842,12 +842,10 @@ function cachicamoapp_process_single_batch( $batch_skus, $sku_to_product_map, $s
 			$price_final = $price_prev;
 			$stock_final = $is_virtual ? null : $stock_quantity;
 
-			// Build WC identifier: pid for simple, pid + vid for variation
-			$sku_wc = isset( $product_data['variation_id'] )
-				? 'pid:' . $product_data['parent_id'] . ' vid:' . $product_data['variation_id']
-				: 'pid:' . $product_id;
-
-			if 
+		// Build WC identifier: pid for simple, pid + vid for variation
+		$sku_wc = isset( $product_data['variation_id'] )
+			? 'pid:' . $product_data['parent_id'] . ' vid:' . $product_data['variation_id']
+			: 'pid:' . $product_id;
 
 			// Update stock in WooCommerce (only for non-virtual products)
 			if ( ! $is_virtual ) {
