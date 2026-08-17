@@ -5,3 +5,6 @@ node_modules/
 build/
 package-lock.json
 yarn-error.log
+
+# Volcados de crash de Git Bash
+*.stackdump
