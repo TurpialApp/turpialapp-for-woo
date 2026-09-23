@@ -50,4 +50,36 @@ class Routes {
 	public static function webhooks_config() {
 		return '/webhooks/config';
 	}
+
+	public static function webhooks_config_action( $action ) {
+		return '/webhooks/config/' . rawurlencode( $action );
+	}
+
+	public static function customers_search( $search ) {
+		return '/customers/search/' . rawurlencode( $search );
+	}
+
+	public static function customers_email( $email ) {
+		return '/customers/email/' . rawurlencode( $email );
+	}
+
+	public static function customers_create() {
+		return '/customers';
+	}
+
+	public static function documents_preview() {
+		return '/documents/preview';
+	}
+
+	public static function documents_save_preview() {
+		return '/documents/save_preview';
+	}
+
+	public static function documents_by_uuid( $uuid ) {
+		return '/documents/uuid/' . rawurlencode( $uuid );
+	}
+
+	public static function documents_digital_pdf( $uuid ) {
+		return '/documents/digital_pdf/' . rawurlencode( $uuid );
+	}
 }
