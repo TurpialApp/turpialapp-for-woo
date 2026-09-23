@@ -11,4 +11,9 @@ module.exports = {
 		...defaultConfig.output,
 		path: path.resolve( __dirname, 'assets/build' ),
 	},
+	externals: {
+		...defaultConfig.externals,
+		'@woocommerce/blocks-checkout': [ 'wc', 'blocksCheckout' ],
+		'@woocommerce/settings': [ 'wc', 'wcSettings' ],
+	},
 };

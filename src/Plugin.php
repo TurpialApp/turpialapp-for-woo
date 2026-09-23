@@ -3,6 +3,7 @@
 namespace Cachicamo\WooCommerce;
 
 use Cachicamo\WooCommerce\Api\Client;
+use Cachicamo\WooCommerce\Checkout\BlocksAssets;
 use Cachicamo\WooCommerce\Checkout\DocumentField;
 use Cachicamo\WooCommerce\Checkout\OrderMeta;
 use Cachicamo\WooCommerce\Jobs\Scheduler;
@@ -73,6 +74,7 @@ class Plugin {
 		$this->services['scheduler']->register_hooks();
 
 		DocumentField::register_hooks();
+		BlocksAssets::register_hooks();
 		CartHooks::register_hooks();
 		CheckoutTotals::register_hooks();
 		OrderMeta::register_hooks();
