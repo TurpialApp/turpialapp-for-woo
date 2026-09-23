@@ -4,8 +4,10 @@ namespace Cachicamo\WooCommerce;
 
 use Cachicamo\WooCommerce\Api\Client;
 use Cachicamo\WooCommerce\Checkout\DocumentField;
+use Cachicamo\WooCommerce\Checkout\OrderMeta;
 use Cachicamo\WooCommerce\Jobs\Scheduler;
 use Cachicamo\WooCommerce\Pricing\CartHooks;
+use Cachicamo\WooCommerce\Pricing\CheckoutTotals;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -72,6 +74,8 @@ class Plugin {
 
 		DocumentField::register_hooks();
 		CartHooks::register_hooks();
+		CheckoutTotals::register_hooks();
+		OrderMeta::register_hooks();
 
 		\Cachicamo\WooCommerce\Account\Status::register_hooks();
 		\Cachicamo\WooCommerce\Admin\Menu::register_hooks();

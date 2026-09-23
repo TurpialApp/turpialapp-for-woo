@@ -36,11 +36,14 @@ class Rates {
 			: array();
 
 		$effective = array();
+		$meta      = array();
 		foreach ( $system as $iso => $rate ) {
 			$effective[ $iso ] = self::rate_value( $rate );
+			$meta[ $iso ]      = self::rate_meta_value( $rate );
 		}
 		foreach ( $user as $iso => $rate ) {
 			$effective[ $iso ] = self::rate_value( $rate );
+			$meta[ $iso ]      = self::rate_meta_value( $rate );
 		}
 		if ( ! isset( $effective['USD'] ) ) {
 			$effective['USD'] = 1.0;
@@ -50,6 +53,7 @@ class Rates {
 			self::OPTION_NAME,
 			array(
 				'rates'      => $effective,
+				'meta'       => $meta,
 				'fetched_at' => time(),
 			)
 		);
@@ -62,6 +66,16 @@ class Rates {
 			return (float) $rate['rate'];
 		}
 		return (float) $rate;
+	}
+
+	/**
+	 * @return array{uuid:string,created_at:string}
+	 */
+	private static function rate_meta_value( $rate ) {
+		return array(
+			'uuid'       => is_array( $rate ) && isset( $rate['uuid'] ) ? (string) $rate['uuid'] : '',
+			'created_at' => is_array( $rate ) && isset( $rate['created_at'] ) ? (string) $rate['created_at'] : '',
+		);
 	}
 
 	/**
@@ -78,6 +92,25 @@ class Rates {
 	public static function get( $iso ) {
 		$rates = self::all();
 		return isset( $rates[ $iso ] ) ? (float) $rates[ $iso ] : null;
+	}
+
+	public static function currency_uuid( $iso ) {
+		$stored = get_option( self::OPTION_NAME, array() );
+		if ( ! is_array( $stored ) || empty( $stored['meta'][ $iso ]['uuid'] ) ) {
+			return null;
+		}
+		return $stored['meta'][ $iso ]['uuid'];
+	}
+
+	/**
+	 * @return array{uuid:string,created_at:string}|null
+	 */
+	public static function meta( $iso ) {
+		$stored = get_option( self::OPTION_NAME, array() );
+		if ( ! is_array( $stored ) || empty( $stored['meta'][ $iso ] ) ) {
+			return null;
+		}
+		return $stored['meta'][ $iso ];
 	}
 
 	public static function fetched_at() {
