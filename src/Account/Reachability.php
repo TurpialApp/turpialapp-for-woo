@@ -44,19 +44,22 @@ class Reachability {
 			);
 		}
 
-		$nonce     = self::issue_nonce();
-		$probe_url = add_query_arg( 'probe', $nonce, rest_url( 'cachicamoapp/v1/events' ) );
+		$nonce = self::issue_nonce();
+		$url   = add_query_arg( 'probe', $nonce, rest_url( 'cachicamoapp/v1/events' ) );
 
 		$result = $client->request(
 			'POST',
 			Routes::site_reachability(),
 			array(
-				'probe_url' => $probe_url,
-				'nonce'     => $nonce,
+				'url' => $url,
 			)
 		);
 
-		$passed = $result['ok'] && ! empty( $result['body']['reachable'] );
+		$passed = $result['ok']
+			&& isset( $result['body']['status_code'] )
+			&& 200 === $result['body']['status_code']
+			&& isset( $result['body']['content'] )
+			&& $nonce === trim( $result['body']['content'] );
 
 		update_option(
 			self::OPTION_NAME,
