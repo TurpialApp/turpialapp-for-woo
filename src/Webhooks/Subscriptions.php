@@ -55,24 +55,24 @@ class Subscriptions {
 			);
 		}
 
-		$get = $client->request( 'GET', Routes::webhooks_config(), array(), array( 'event' => $event ) );
-		if ( ! $get['ok'] ) {
+		$get = $client->request( 'GET', Routes::webhooks_config_action( $event ) );
+		if ( ! $get['ok'] && 404 !== $get['status_code'] ) {
 			return array(
 				'ok'    => false,
 				'error' => $get['error'],
 			);
 		}
 
-		$destinations = isset( $get['body']['destinations'] ) && is_array( $get['body']['destinations'] )
-			? $get['body']['destinations']
+		$webhooks = isset( $get['body']['webhooks'] ) && is_array( $get['body']['webhooks'] )
+			? $get['body']['webhooks']
 			: array();
 
-		$own_url  = rest_url( 'cachicamoapp/v1/events' );
-		$foreign  = array_values(
+		$own_destination = rest_url( 'cachicamoapp/v1/events' );
+		$foreign         = array_values(
 			array_filter(
-				$destinations,
-				static function ( $destination ) use ( $own_url ) {
-					return ! isset( $destination['url'] ) || $destination['url'] !== $own_url;
+				$webhooks,
+				static function ( $webhook ) use ( $own_destination ) {
+					return ! isset( $webhook['destination'] ) || $webhook['destination'] !== $own_destination;
 				}
 			)
 		);
@@ -85,9 +85,9 @@ class Subscriptions {
 		}
 
 		$foreign[] = array(
-			'url'     => $own_url,
-			'method'  => 'POST',
-			'headers' => array(
+			'destination' => $own_destination,
+			'method'      => 'POST',
+			'headers'     => array(
 				'X-Cachicamo-Key' => Repository::get( 'webhook_secret', '' ),
 			),
 		);
@@ -96,8 +96,8 @@ class Subscriptions {
 			'POST',
 			Routes::webhooks_config(),
 			array(
-				'event'        => $event,
-				'destinations' => $foreign,
+				'action'   => $event,
+				'webhooks' => $foreign,
 			)
 		);
 
