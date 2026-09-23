@@ -82,4 +82,36 @@ class Routes {
 	public static function documents_digital_pdf( $uuid ) {
 		return '/documents/digital_pdf/' . rawurlencode( $uuid );
 	}
+
+	public static function products( $page, $limit = 500 ) {
+		return '/products';
+	}
+
+	public static function products_categories() {
+		return '/products/categories';
+	}
+
+	public static function products_categories_bulk() {
+		return '/products/categories/bulk';
+	}
+
+	public static function products_bulk_json() {
+		return '/products/bulk/json';
+	}
+
+	public static function products_bulk_xlsx_status( $uuid ) {
+		return '/products/bulk/xlsx/uuid/' . rawurlencode( $uuid );
+	}
+
+	public static function products_batch_sku() {
+		return '/products/batch/sku';
+	}
+
+	public static function inventories_simple_export_json() {
+		return '/inventories/simple/export/json';
+	}
+
+	public static function inventories_batch_sku() {
+		return '/inventories/batch/sku';
+	}
 }
