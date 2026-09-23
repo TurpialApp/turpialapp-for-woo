@@ -85,6 +85,58 @@ class Client {
 		return $this->interpret( $status, $decoded, $response, $route );
 	}
 
+	/**
+	 * Fetches a route whose body is not JSON (a streamed PDF), so it never runs it through
+	 * json_decode. Errors keep the same table 4.3 shape as request(); a success carries the raw
+	 * body and its content type instead of a decoded array.
+	 *
+	 * @return array{ok:bool,status:int,raw:string,content_type:string,error:string|null}
+	 */
+	public function raw_get( $route ) {
+		$url      = untrailingslashit( CACHICAMO_APP_API_URL ) . $route;
+		$response = wp_remote_request(
+			$url,
+			array(
+				'method'  => 'GET',
+				'timeout' => 20,
+				'headers' => $this->headers(),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$this->log( 'transport error calling ' . $route . ': ' . $response->get_error_message() );
+			return array(
+				'ok'           => false,
+				'status'       => 0,
+				'raw'          => '',
+				'content_type' => '',
+				'error'        => self::ERROR_TRANSPORT,
+			);
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( $status < 200 || $status >= 300 ) {
+			$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
+			$decoded = is_array( $decoded ) ? $decoded : array();
+			$result  = $this->interpret( $status, $decoded, $response, $route );
+			return array(
+				'ok'           => false,
+				'status'       => $status,
+				'raw'          => '',
+				'content_type' => '',
+				'error'        => $result['error'],
+			);
+		}
+
+		return array(
+			'ok'           => true,
+			'status'       => $status,
+			'raw'          => wp_remote_retrieve_body( $response ),
+			'content_type' => wp_remote_retrieve_header( $response, 'content-type' ),
+			'error'        => null,
+		);
+	}
+
 	private function headers() {
 		return array(
 			'Authorization' => 'Bearer ' . Repository::get( 'api_token', '' ),
