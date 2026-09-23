@@ -3,7 +3,9 @@
 namespace Cachicamo\WooCommerce;
 
 use Cachicamo\WooCommerce\Api\Client;
+use Cachicamo\WooCommerce\Checkout\DocumentField;
 use Cachicamo\WooCommerce\Jobs\Scheduler;
+use Cachicamo\WooCommerce\Pricing\CartHooks;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -67,6 +69,16 @@ class Plugin {
 		$this->register_service( 'scheduler', new Scheduler() );
 
 		$this->services['scheduler']->register_hooks();
+
+		DocumentField::register_hooks();
+		CartHooks::register_hooks();
+
+		\Cachicamo\WooCommerce\Account\Status::register_hooks();
+		\Cachicamo\WooCommerce\Admin\Menu::register_hooks();
+		\Cachicamo\WooCommerce\Webhooks\Handlers::register();
+
+		add_action( 'rest_api_init', array( '\\Cachicamo\\WooCommerce\\Webhooks\\Receiver', 'register_routes' ) );
+		add_action( 'rest_api_init', array( '\\Cachicamo\\WooCommerce\\Admin\\Rest', 'register_routes' ) );
 
 		Schema::maybe_upgrade();
 	}
