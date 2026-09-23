@@ -6,6 +6,7 @@ use Cachicamo\WooCommerce\Api\Client;
 use Cachicamo\WooCommerce\Api\Routes;
 use Cachicamo\WooCommerce\Plugin;
 use Cachicamo\WooCommerce\Pricing\Calculator;
+use Cachicamo\WooCommerce\Pricing\PaymentTaxes;
 use Cachicamo\WooCommerce\Pricing\TaxCatalog;
 use Cachicamo\WooCommerce\Settings\Repository;
 
@@ -249,7 +250,8 @@ class DirectInvoicer {
 			? $preview_body['currency_rate_by_payment_methods']
 			: array();
 		$rate       = isset( $rates[ $payment_method_uuid ] ) ? (float) $rates[ $payment_method_uuid ] : 1.0;
-		$amount     = round( $total_to_pay * $rate, 4 );
+		$igtf_rate  = PaymentTaxes::for_payment_method( $payment_method_uuid )['igtf_rate'];
+		$amount     = self::payment_amount( $total_to_pay, $rate, $igtf_rate );
 
 		$payment = array(
 			'payment_method_uuid' => $payment_method_uuid,
@@ -266,6 +268,20 @@ class DirectInvoicer {
 		}
 
 		return $payment;
+	}
+
+	/**
+	 * P = T * (1 + r): the IGTF rate applies on the total to pay before the currency
+	 * conversion of the mapped payment method, since the core taxes the payment in its own
+	 * currency and the plugin has to send the converted amount already inflated.
+	 *
+	 * @param float $total_to_pay
+	 * @param float $currency_rate
+	 * @param float $igtf_rate
+	 * @return float
+	 */
+	public static function payment_amount( $total_to_pay, $currency_rate, $igtf_rate ) {
+		return round( $total_to_pay * $currency_rate * ( 1 + $igtf_rate ), 4 );
 	}
 
 	private static function currency_uuid( $currency_iso ) {
