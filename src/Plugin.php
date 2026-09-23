@@ -82,6 +82,12 @@ class Plugin {
 		\Cachicamo\WooCommerce\Account\Status::register_hooks();
 		\Cachicamo\WooCommerce\Admin\Menu::register_hooks();
 		\Cachicamo\WooCommerce\Webhooks\Handlers::register();
+		\Cachicamo\WooCommerce\Catalog\WebhookHandlers::register();
+
+		\Cachicamo\WooCommerce\Jobs\BatchRunner::register_handler(
+			\Cachicamo\WooCommerce\Catalog\ImportFlow::RUN_TYPE,
+			new \Cachicamo\WooCommerce\Catalog\ImportFlow()
+		);
 
 		\Cachicamo\WooCommerce\Billing\Trigger::register_hooks();
 		\Cachicamo\WooCommerce\Billing\Pdf::register_hooks();
