@@ -1,23 +1,19 @@
 {
-    "name": "cachicamoapp/cachicamoapp-for-woo",
-    "description": "CachicamoApp for WooCommerce",
+    "name": "cachicamo/cachicamoapp-for-woo",
+    "description": "Cachicamo App for WooCommerce",
+    "license": "MIT",
     "type": "wordpress-plugin",
-    "license": "GPL-2.0-or-later",
-    "require-dev": {
-        "squizlabs/php_codesniffer": "^3.12",
-        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-        "wp-coding-standards/wpcs": "^3.1",
-        "phpcompatibility/phpcompatibility-wp": "^2.1"
+    "require": {
+        "php": ">=7.4"
     },
-    "config": {
-        "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": true
+    "autoload": {
+        "psr-4": {
+            "Cachicamo\\WooCommerce\\": "src/"
         }
     },
-    "scripts": {
-        "phpcs": "phpcs",
-        "phpcbf": "phpcbf",
-        "check-cs": "phpcs .",
-        "fix-cs": "phpcbf ."
+    "config": {
+        "platform": {
+            "php": "7.4"
+        }
     }
 }

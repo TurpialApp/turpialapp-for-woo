@@ -2,52 +2,30 @@
 /**
  * Plugin Name: Cachicamo App for WooCommerce
  * Plugin URI: https://cachicamo.app/
- * Description: Connect Cachicamo with WooCommerce for inventory sync
- * Author: Kijam López
- * Author URI: https://cachicamo.app/
- * Version: 1.0.0
+ * Description: Synchronizes products, inventory and orders between a WooCommerce store and Cachicamo App.
+ * Version: 2.0.0
+ * Author: Cachicamo
  * License: MIT
+ * License URI: https://opensource.org/licenses/MIT
  * Text Domain: cachicamoapp-for-woo
- * Domain Path: /
- *
- * @package CachicamoApp_For_WooCommerce
+ * Domain Path: /languages
+ * Requires at least: 6.4
+ * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
+ * WC requires at least: 8.9
  */
 
-/**
- * Prevent direct access to this file
- */
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+defined( 'ABSPATH' ) || exit;
 
-/**
- * Define plugin constants
- */
-define( 'CACHICAMO_APP_ENDPOINT', 'https://api.cachicamo.app' );
+define( 'CACHICAMO_APP_VERSION', '2.0.0' );
+define( 'CACHICAMO_APP_FILE', __FILE__ );
 define( 'CACHICAMO_APP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CACHICAMO_APP_URL', plugin_dir_url( __FILE__ ) );
-define( 'CACHICAMO_APP_VERSION', '1.0.0' );
 
-/**
- * Load required plugin files
- */
-require_once CACHICAMO_APP_DIR . 'includes/class-cachicamoapp-for-woo.php';
-require_once CACHICAMO_APP_DIR . 'includes/cachicamo-basic-api-functions.php';
-require_once CACHICAMO_APP_DIR . 'includes/product-functions.php';
-require_once CACHICAMO_APP_DIR . 'includes/customer-functions.php';
-require_once CACHICAMO_APP_DIR . 'includes/order-functions.php';
-require_once CACHICAMO_APP_DIR . 'includes/admin-functions.php';
-require_once CACHICAMO_APP_DIR . 'includes/utils.php';
-require_once CACHICAMO_APP_DIR . 'includes/webhook-handler.php';
+if ( ! defined( 'CACHICAMO_APP_API_URL' ) ) {
+	define( 'CACHICAMO_APP_API_URL', 'https://api.cachicamo.app' );
+}
 
-/**
- * Initialize the plugin
- */
-CachicamoApp_For_Woo::init();
+require_once CACHICAMO_APP_DIR . 'src/autoload.php';
 
-/**
- * Load plugin text domain for translations
- */
-$cachicamoapp_locale = apply_filters( 'plugin_locale', get_locale(), 'cachicamoapp-for-woo' );
-load_textdomain( 'cachicamoapp-for-woo', trailingslashit( WP_LANG_DIR ) . 'cachicamoapp-for-woo/cachicamoapp-for-woo-' . $cachicamoapp_locale . '.mo' );
-load_plugin_textdomain( 'cachicamoapp-for-woo', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
+add_action( 'plugins_loaded', array( '\\Cachicamo\\WooCommerce\\Plugin', 'boot' ) );
