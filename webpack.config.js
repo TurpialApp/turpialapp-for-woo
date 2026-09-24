@@ -16,6 +16,7 @@ module.exports = {
 	externals: {
 		...defaultConfig.externals,
 		'@woocommerce/blocks-checkout': [ 'wc', 'blocksCheckout' ],
+		'@woocommerce/blocks-registry': [ 'wc', 'wcBlocksRegistry' ],
 		'@woocommerce/settings': [ 'wc', 'wcSettings' ],
 	},
 };
