@@ -79,6 +79,7 @@ class Receiver {
 			? (string) $payload['event_id']
 			: hash( 'sha1', $action . wp_json_encode( $payload ) . microtime() );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- inbox write, no caching layer applies to an insert.
 		$wpdb->query(
 			$wpdb->prepare(
 				"INSERT IGNORE INTO {$wpdb->prefix}cachicamo_inbox (event_key, action, payload, received_at) VALUES (%s, %s, %s, %s)",
@@ -93,6 +94,7 @@ class Receiver {
 	public static function drain_inbox( $limit = 200 ) {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- must read the pending queue fresh every run; caching would replay already-drained events.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT event_key, action, payload FROM {$wpdb->prefix}cachicamo_inbox ORDER BY received_at ASC LIMIT %d",
@@ -117,6 +119,7 @@ class Receiver {
 				}
 			}
 
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- inbox row consumed once dispatched, no caching layer applies to a delete.
 			$wpdb->delete( "{$wpdb->prefix}cachicamo_inbox", array( 'event_key' => $row['event_key'] ) );
 		}
 

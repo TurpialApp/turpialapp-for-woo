@@ -40,6 +40,7 @@ class Handlers {
 			return;
 		}
 
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- point lookup on a single unique meta key, capped to one result.
 		$orders = wc_get_orders(
 			array(
 				'limit'      => 1,

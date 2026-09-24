@@ -33,8 +33,6 @@ class Plugin {
 			return;
 		}
 
-		load_plugin_textdomain( 'cachicamoapp-for-woo', false, dirname( plugin_basename( CACHICAMO_APP_FILE ) ) . '/languages' );
-
 		add_action( 'before_woocommerce_init', array( __CLASS__, 'declare_woocommerce_compatibility' ) );
 		register_activation_hook( CACHICAMO_APP_FILE, array( __CLASS__, 'activate' ) );
 

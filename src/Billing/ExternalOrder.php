@@ -212,6 +212,7 @@ class ExternalOrder {
 			return;
 		}
 
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- point lookup on a single well-known meta key, batch capped by SWEEP_BATCH.
 		$orders = wc_get_orders(
 			array(
 				'status'       => $trigger_statuses,

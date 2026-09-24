@@ -23,7 +23,7 @@ class Links {
 	public static function get_uuid( $wc_id ) {
 		global $wpdb;
 		$uuid = $wpdb->get_var(
-			$wpdb->prepare( 'SELECT cachicamo_uuid FROM ' . self::table() . ' WHERE wc_id = %d', $wc_id )
+			$wpdb->prepare( 'SELECT cachicamo_uuid FROM %i WHERE wc_id = %d', self::table(), $wc_id )
 		);
 		return $uuid ? $uuid : null;
 	}
@@ -31,7 +31,7 @@ class Links {
 	public static function get_wc_id( $uuid ) {
 		global $wpdb;
 		$wc_id = $wpdb->get_var(
-			$wpdb->prepare( 'SELECT wc_id FROM ' . self::table() . ' WHERE cachicamo_uuid = %s', $uuid )
+			$wpdb->prepare( 'SELECT wc_id FROM %i WHERE cachicamo_uuid = %s', self::table(), $uuid )
 		);
 		return $wc_id ? (int) $wc_id : null;
 	}
@@ -39,7 +39,7 @@ class Links {
 	public static function row( $wc_id ) {
 		global $wpdb;
 		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE wc_id = %d', $wc_id ),
+			$wpdb->prepare( 'SELECT * FROM %i WHERE wc_id = %d', self::table(), $wc_id ),
 			ARRAY_A
 		);
 		return is_array( $row ) ? $row : null;
@@ -54,8 +54,9 @@ class Links {
 
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::table() . ' (wc_id, cachicamo_uuid, kind, updated_at) VALUES (%d, %s, %s, %s)
+				'INSERT INTO %i (wc_id, cachicamo_uuid, kind, updated_at) VALUES (%d, %s, %s, %s)
 				 ON DUPLICATE KEY UPDATE cachicamo_uuid = VALUES(cachicamo_uuid), kind = VALUES(kind), updated_at = VALUES(updated_at)',
+				self::table(),
 				$wc_id,
 				$uuid,
 				$kind,

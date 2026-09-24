@@ -55,7 +55,8 @@ class Combos {
 		global $wpdb;
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT component_uuid, quantity FROM ' . self::table() . ' WHERE combo_uuid = %s',
+				'SELECT component_uuid, quantity FROM %i WHERE combo_uuid = %s',
+				self::table(),
 				$combo_uuid
 			),
 			ARRAY_A
@@ -70,7 +71,8 @@ class Combos {
 		global $wpdb;
 		$rows = $wpdb->get_col(
 			$wpdb->prepare(
-				'SELECT DISTINCT combo_uuid FROM ' . self::table() . ' WHERE component_uuid = %s',
+				'SELECT DISTINCT combo_uuid FROM %i WHERE component_uuid = %s',
+				self::table(),
 				$component_uuid
 			)
 		);

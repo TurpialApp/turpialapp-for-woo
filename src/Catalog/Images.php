@@ -175,6 +175,13 @@ class Images {
 
 	private static function find_attachment_by_source_url( $url ) {
 		global $wpdb;
+
+		$cache_key      = 'cachicamoapp_img_src_' . md5( $url );
+		$attachment_id  = wp_cache_get( $cache_key, 'cachicamoapp' );
+		if ( false !== $attachment_id ) {
+			return $attachment_id ? (int) $attachment_id : null;
+		}
+
 		$attachment_id = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 1",
@@ -182,6 +189,9 @@ class Images {
 				$url
 			)
 		);
+
+		wp_cache_set( $cache_key, (int) $attachment_id, 'cachicamoapp', MINUTE_IN_SECONDS );
+
 		return $attachment_id ? (int) $attachment_id : null;
 	}
 }
