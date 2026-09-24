@@ -23,24 +23,29 @@ class WebhookHandlers {
 	}
 
 	public static function handle_product( $action, array $payload ) {
+		// helpers/webhook_events.go: webhookMessage() wraps every product.* action (its
+		// default branch) as { payload: <data>, action, event_at }; Dispatcher hands over the
+		// whole envelope, so the actual product data is one level deeper than $payload itself.
+		$data = isset( $payload['payload'] ) && is_array( $payload['payload'] ) ? $payload['payload'] : array();
+
 		if ( 'product.deleted' === $action ) {
-			if ( isset( $payload['uuid'] ) ) {
-				RemoteDelete::handle( (string) $payload['uuid'] );
+			if ( isset( $data['uuid'] ) ) {
+				RemoteDelete::handle( (string) $data['uuid'] );
 			}
 			return;
 		}
 
-		foreach ( self::items_from( $payload ) as $item ) {
+		foreach ( self::items_from( $data ) as $item ) {
 			self::handle_single_product( $action, $item );
 		}
 	}
 
-	private static function items_from( array $payload ) {
-		if ( isset( $payload['products'] ) && is_array( $payload['products'] ) ) {
-			return $payload['products'];
+	private static function items_from( array $data ) {
+		if ( isset( $data['items'] ) && is_array( $data['items'] ) ) {
+			return $data['items'];
 		}
-		if ( isset( $payload['uuid'] ) ) {
-			return array( $payload );
+		if ( isset( $data['uuid'] ) ) {
+			return array( $data );
 		}
 		return array();
 	}
@@ -82,17 +87,19 @@ class WebhookHandlers {
 	}
 
 	public static function handle_stock( $action, array $payload ) {
-		foreach ( self::items_from_stock( $payload ) as $item ) {
+		$data = isset( $payload['payload'] ) && is_array( $payload['payload'] ) ? $payload['payload'] : array();
+
+		foreach ( self::items_from_stock( $data ) as $item ) {
 			self::handle_single_stock( $item );
 		}
 	}
 
-	private static function items_from_stock( array $payload ) {
-		if ( isset( $payload['inventories'] ) && is_array( $payload['inventories'] ) ) {
-			return $payload['inventories'];
+	private static function items_from_stock( array $data ) {
+		if ( isset( $data['items'] ) && is_array( $data['items'] ) ) {
+			return $data['items'];
 		}
-		if ( isset( $payload['product_uuid'] ) ) {
-			return array( $payload );
+		if ( isset( $data['product_uuid'] ) ) {
+			return array( $data );
 		}
 		return array();
 	}
@@ -140,12 +147,14 @@ class WebhookHandlers {
 			return;
 		}
 
-		$response = $client->request( 'POST', Routes::inventories_batch_sku(), array( 'ids' => array( $product_uuid ) ) );
-		if ( ! $response['ok'] || empty( $response['body']['data'] ) ) {
+		// InventoryBatchBySKURequest.sku_list also resolves a UUID to itself (like
+		// /products/batch/sku), and the endpoint answers a bare JSON array, not an envelope.
+		$response = $client->request( 'POST', Routes::inventories_batch_sku(), array( 'sku_list' => array( $product_uuid ) ) );
+		if ( ! $response['ok'] || empty( $response['body'] ) ) {
 			return;
 		}
 
-		foreach ( $response['body']['data'] as $row ) {
+		foreach ( $response['body'] as $row ) {
 			if ( ! isset( $row['product_uuid'] ) ) {
 				continue;
 			}
