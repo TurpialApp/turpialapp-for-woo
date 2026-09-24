@@ -9,54 +9,53 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-24T03:11:49+00:00\n"
+"POT-Creation-Date: 2026-09-24T08:22:06+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"X-Generator: WP-CLI 2.12.0\n"
+"X-Generator: WP-CLI 2.7.1\n"
 "X-Domain: cachicamoapp-for-woo\n"
 
 #. Plugin Name of the plugin
-#: cachicamoapp-for-woo.php
 msgid "Cachicamo App for WooCommerce"
 msgstr ""
 
 #. Plugin URI of the plugin
-#: cachicamoapp-for-woo.php
 msgid "https://cachicamo.app/"
 msgstr ""
 
 #. Description of the plugin
-#: cachicamoapp-for-woo.php
 msgid "Synchronizes products, inventory and orders between a WooCommerce store and Cachicamo App."
 msgstr ""
 
 #. Author of the plugin
-#: cachicamoapp-for-woo.php
 #: src/Billing/OrderMetabox.php:29
+#: assets/build/payments.js:1
+#: client/payments/index.js:29
 msgid "Cachicamo"
 msgstr ""
 
 #. translators: %s: plan expiration date.
-#: src/Account/Status.php:117
-#, php-format
+#: src/Account/Status.php:121
 msgid "Your Cachicamo subscription has a pending payment; it expires on %s."
 msgstr ""
 
-#: src/Account/Status.php:128
+#: src/Account/Status.php:132
 msgid "Your Cachicamo account is expired. Renew it at cachicamo.app to resume syncing and invoicing."
 msgstr ""
 
-#: src/Admin/CatalogScreen.php:33
 #: src/Admin/CatalogScreen.php:34
+#: src/Admin/CatalogScreen.php:35
+#: assets/build/catalog.js:3
 #: client/catalog/app.js:7
 msgid "Catalog"
 msgstr ""
 
-#: src/Admin/CatalogScreen.php:138
+#: src/Admin/CatalogScreen.php:139
 msgid "Unknown flow."
 msgstr ""
 
 #: src/Admin/Menu.php:22
 #: src/Admin/Menu.php:23
+#: assets/build/admin.js:1
 #: client/admin/app.js:36
 msgid "Cachicamo App"
 msgstr ""
@@ -81,13 +80,12 @@ msgstr ""
 
 #. translators: 1: number of products updated, 2: number of products failed
 #: src/Admin/ProductImageActions.php:118
-#, php-format
 msgid "Cachicamo images: %1$d updated, %2$d failed."
 msgstr ""
 
 #: src/Admin/ProductImageActions.php:131
 #: src/Admin/ProductImageActions.php:143
-#: src/Billing/ExternalOrder.php:152
+#: src/Billing/ExternalOrder.php:162
 #: src/Billing/OrderMetabox.php:81
 msgid "You are not allowed to do this."
 msgstr ""
@@ -104,19 +102,23 @@ msgstr ""
 msgid "A store is required."
 msgstr ""
 
-#: src/Admin/Rest.php:275
+#: src/Admin/Rest.php:209
+msgid "Cachicamo could not register the order webhook key with the store. Reopen the connection wizard and select the store again."
+msgstr ""
+
+#: src/Admin/Rest.php:307
 msgid "Could not connect to Cachicamo. Check your token or write to support."
 msgstr ""
 
-#: src/Admin/Rest.php:276
+#: src/Admin/Rest.php:308
 msgid "Your Cachicamo account is expired."
 msgstr ""
 
-#: src/Admin/Rest.php:277
+#: src/Admin/Rest.php:309
 msgid "Could not connect to Cachicamo. Write to support."
 msgstr ""
 
-#: src/Admin/Rest.php:279
+#: src/Admin/Rest.php:311
 msgid "Could not connect to Cachicamo. Try again in a moment."
 msgstr ""
 
@@ -132,7 +134,7 @@ msgstr ""
 msgid "Every minute (Cachicamo external order sweep)"
 msgstr ""
 
-#: src/Billing/ExternalOrder.php:333
+#: src/Billing/ExternalOrder.php:344
 msgid "Cachicamo invoice linked."
 msgstr ""
 
@@ -168,41 +170,62 @@ msgstr ""
 msgid "Issue the credit note in cachicamo.app."
 msgstr ""
 
-#: src/Checkout/DocumentField.php:40
-#: src/Checkout/DocumentField.php:81
+#: src/Checkout/DocumentField.php:45
+#: src/Checkout/DocumentField.php:133
 msgid "Documento de identidad (cédula o RIF)"
 msgstr ""
 
-#: src/Checkout/DocumentField.php:65
-#: src/Checkout/DocumentField.php:102
+#: src/Checkout/DocumentField.php:70
+#: src/Checkout/DocumentField.php:95
+#: src/Checkout/DocumentField.php:156
+#: src/Checkout/DocumentField.php:167
 msgid "Falta el documento de identidad."
 msgstr ""
 
-#: src/Checkout/DocumentField.php:127
+#: src/Checkout/DocumentField.php:192
 msgid "El documento de identidad no es válido."
+msgstr ""
+
+#: src/Payments/AbstractCachicamoGateway.php:126
+msgid "This payment method is not available right now, choose another one."
+msgstr ""
+
+#. translators: %s: order number
+#: src/Payments/BiopagoGateway.php:37
+#: src/Payments/SpidiGateway.php:25
+#: src/Payments/WayuPayGateway.php:27
+msgid "Order #%s"
+msgstr ""
+
+#: src/Payments/MappingIndicator.php:36
+msgid "Mapped to a Cachicamo payment method"
+msgstr ""
+
+#: src/Payments/MappingIndicator.php:37
+msgid "Not mapped to any Cachicamo payment method"
+msgstr ""
+
+#: src/Payments/SpidiGateway.php:23
+msgid "Customer"
 msgstr ""
 
 #. translators: %s: minimum PHP version
 #: src/Requirements.php:42
-#, php-format
 msgid "PHP %s or higher"
 msgstr ""
 
 #. translators: %s: minimum WordPress version
 #: src/Requirements.php:49
-#, php-format
 msgid "WordPress %s or higher"
 msgstr ""
 
 #. translators: %s: minimum WooCommerce version
 #: src/Requirements.php:56
-#, php-format
 msgid "WooCommerce %s or higher, active"
 msgstr ""
 
 #. translators: %s: comma separated list of missing requirements
 #: src/Requirements.php:62
-#, php-format
 msgid "Cachicamo App for WooCommerce requires: %s."
 msgstr ""
 
@@ -214,150 +237,37 @@ msgstr ""
 msgid "Missing action."
 msgstr ""
 
-#: client/admin/app.js:20
-msgid "Could not load the Cachicamo App status."
-msgstr ""
-
-#: client/admin/app.js:39
-msgid "Your Cachicamo account is expired. Renew it at cachicamo.app."
-msgstr ""
-
-#: client/admin/app.js:44
-msgid "Your Cachicamo subscription has a pending payment."
-msgstr ""
-
-#: client/admin/screens/payment-mapping.js:23
-msgid "No WooCommerce payment gateways found."
-msgstr ""
-
+#: assets/build/admin.js:1
 #: client/admin/screens/payment-mapping.js:28
 msgid "Match each WooCommerce payment gateway to its Cachicamo payment method UUID."
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/payment-mapping.js:32
 msgid "(disabled)"
 msgstr ""
 
-#: client/admin/screens/settings.js:43
-msgid "General"
+#: assets/build/admin.js:1
+#: client/admin/screens/payment-mapping.js:23
+msgid "No WooCommerce payment gateways found."
 msgstr ""
 
-#: client/admin/screens/settings.js:44
-msgid "Synchronization"
-msgstr ""
-
-#: client/admin/screens/settings.js:45
-msgid "Payments"
-msgstr ""
-
-#: client/admin/screens/settings.js:50
-msgid "Settings saved."
-msgstr ""
-
-#: client/admin/screens/settings.js:58
-#: client/admin/screens/wizard.js:113
-msgid "Billing mode"
-msgstr ""
-
-#: client/admin/screens/settings.js:61
-#: client/admin/screens/wizard.js:116
-msgid "Direct invoicing"
-msgstr ""
-
-#: client/admin/screens/settings.js:62
-#: client/admin/screens/wizard.js:117
-msgid "External order"
-msgstr ""
-
-#: client/admin/screens/settings.js:67
-#: client/admin/screens/wizard.js:161
-msgid "Starting order number"
-msgstr ""
-
-#: client/admin/screens/settings.js:73
-msgid "Order document meta key"
-msgstr ""
-
-#: client/admin/screens/settings.js:74
-msgid "Empty uses the checkout field the plugin injects."
-msgstr ""
-
-#: client/admin/screens/settings.js:86
-msgid "Price type"
-msgstr ""
-
-#: client/admin/screens/settings.js:89
-msgid "Base"
-msgstr ""
-
-#: client/admin/screens/settings.js:90
-msgid "Wholesale"
-msgstr ""
-
-#: client/admin/screens/settings.js:91
-msgid "Retail"
-msgstr ""
-
-#: client/admin/screens/settings.js:96
-msgid "Stock source"
-msgstr ""
-
-#: client/admin/screens/settings.js:105
-msgid "Content source"
-msgstr ""
-
-#: client/admin/screens/settings.js:110
-msgid "None"
-msgstr ""
-
-#: client/admin/screens/settings.js:114
-msgid "Fields to synchronize"
-msgstr ""
-
-#: client/admin/screens/settings.js:127
-msgid "Image master"
-msgstr ""
-
-#: client/admin/screens/settings.js:136
-msgid "Overwrite images"
-msgstr ""
-
-#: client/admin/screens/settings.js:139
-msgid "Always"
-msgstr ""
-
-#: client/admin/screens/settings.js:140
-msgid "Never"
-msgstr ""
-
-#: client/admin/screens/settings.js:145
-msgid "On remote delete"
-msgstr ""
-
-#: client/admin/screens/settings.js:148
-msgid "Do nothing"
-msgstr ""
-
-#: client/admin/screens/settings.js:149
-msgid "Set to draft"
-msgstr ""
-
-#: client/admin/screens/settings.js:167
-msgid "Save changes"
-msgstr ""
-
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:29
 msgid "Something went wrong."
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:79
 msgid "Enter your Cachicamo API token to connect this store."
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:80
 msgid "API token"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:82
 #: client/admin/screens/wizard.js:96
 #: client/admin/screens/wizard.js:141
@@ -366,92 +276,259 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:90
 msgid "Store"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:92
 msgid "Select a store"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:103
 msgid "Cachicamo needs to confirm it can reach this store before syncing or billing anything."
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:105
 msgid "Check connection"
 msgstr ""
 
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:58
+#: client/admin/screens/wizard.js:113
+msgid "Billing mode"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:61
+#: client/admin/screens/wizard.js:116
+msgid "Direct invoicing"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:62
+#: client/admin/screens/wizard.js:117
+msgid "External order"
+msgstr ""
+
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:124
 msgid "Fiscal printer"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:126
 msgid "Select a printer"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:131
 msgid "No digital fiscal printer outside sandbox is assigned to this store yet, so direct invoicing stays disabled."
 msgstr ""
 
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:67
+#: client/admin/screens/wizard.js:161
+msgid "Starting order number"
+msgstr ""
+
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:193
 msgid "Subscribe this store to the Cachicamo events it needs."
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:195
 msgid "Finish setup"
 msgstr ""
 
+#: assets/build/admin.js:1
 #: client/admin/screens/wizard.js:201
 msgid "Cachicamo App is connected."
 msgstr ""
 
-#: client/catalog/app.js:9
-msgid "Export: categories"
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:43
+msgid "General"
 msgstr ""
 
-#: client/catalog/app.js:14
-msgid "Export: products"
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:44
+msgid "Synchronization"
 msgstr ""
 
-#: client/catalog/app.js:19
-msgid "Export: attributes"
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:45
+msgid "Payments"
 msgstr ""
 
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:50
+msgid "Settings saved."
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:73
+msgid "Order document meta key"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:74
+msgid "Empty uses the checkout field the plugin injects."
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:86
+msgid "Price type"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:89
+msgid "Base"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:90
+msgid "Wholesale"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:91
+msgid "Retail"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:96
+msgid "Stock source"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:105
+msgid "Content source"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:110
+msgid "None"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:114
+msgid "Fields to synchronize"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:127
+msgid "Image master"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:136
+msgid "Overwrite images"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:139
+msgid "Always"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:140
+msgid "Never"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:145
+msgid "On remote delete"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:148
+msgid "Do nothing"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:149
+msgid "Set to draft"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/screens/settings.js:167
+msgid "Save changes"
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/app.js:20
+msgid "Could not load the Cachicamo App status."
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/app.js:39
+msgid "Your Cachicamo account is expired. Renew it at cachicamo.app."
+msgstr ""
+
+#: assets/build/admin.js:1
+#: client/admin/app.js:44
+msgid "Your Cachicamo subscription has a pending payment."
+msgstr ""
+
+#: assets/build/catalog.js:1
 #: client/catalog/flow.js:21
 msgid "Could not run the preview."
 msgstr ""
 
-#: client/catalog/flow.js:33
-msgid "Could not start the run."
-msgstr ""
-
+#: assets/build/catalog.js:1
 #: client/catalog/flow.js:43
 msgid "Run preview"
 msgstr ""
 
 #. translators: 1: created count, 2: updated count, 3: conflict count
+#: assets/build/catalog.js:2
 #: client/catalog/flow.js:49
-#, js-format
 msgid "Created: %1$d · Updated: %2$d · Conflicts: %3$d"
 msgstr ""
 
 #. translators: %d: number of conflicts.
+#: assets/build/catalog.js:3
 #: client/catalog/flow.js:60
-#, js-format
 msgid "%d conflicts must be resolved before the first run."
 msgstr ""
 
+#: assets/build/catalog.js:3
+#: client/catalog/flow.js:33
+msgid "Could not start the run."
+msgstr ""
+
+#: assets/build/catalog.js:3
 #: client/catalog/flow.js:72
 msgid "Running…"
 msgstr ""
 
+#: assets/build/catalog.js:3
 #: client/catalog/flow.js:72
 msgid "First load"
 msgstr ""
 
+#: assets/build/catalog.js:3
+#: client/catalog/app.js:9
+msgid "Export: categories"
+msgstr ""
+
+#: assets/build/catalog.js:3
+#: client/catalog/app.js:14
+msgid "Export: products"
+msgstr ""
+
+#: assets/build/catalog.js:3
+#: client/catalog/app.js:19
+msgid "Export: attributes"
+msgstr ""
+
 #. translators: %1$s: converted amount, %2$s: currency code.
-#: client/checkout/index.js:60
-#, js-format
+#: assets/build/checkout.js:2
+#: client/checkout/index.js:61
 msgid " — You will pay %1$s %2$s"
 msgstr ""

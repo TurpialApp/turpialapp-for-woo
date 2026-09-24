@@ -4,11 +4,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cachicamo App for WooCommerce 2.0.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/cachicamoapp-for-woo\n"
-"POT-Creation-Date: 2026-09-23T22:29:55+00:00\n"
-"PO-Revision-Date: 2026-09-23 22:00:00+00:00\n"
+"POT-Creation-Date: 2026-09-24T08:22:06+00:00\n"
+"PO-Revision-Date: 2026-09-24 08:30:00+00:00\n"
 "Last-Translator: Cachicamo <support@cachicamo.app>\n"
 "Language-Team: Spanish (Spain)\n"
-"Language: es_ES\n"
+"Language: es_VE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -463,3 +463,25 @@ msgstr "Primera carga"
 #: client/checkout/index.js:60
 msgid " — You will pay %1$s %2$s"
 msgstr " — Pagarás %1$s %2$s"
+
+#: src/Payments/AbstractCachicamoGateway.php:126
+msgid "This payment method is not available right now, choose another one."
+msgstr "Este método de pago no está disponible en este momento, elige otro."
+
+#: src/Payments/BiopagoGateway.php:37
+#: src/Payments/SpidiGateway.php:25
+#: src/Payments/WayuPayGateway.php:27
+msgid "Order #%s"
+msgstr "Pedido #%s"
+
+#: src/Payments/SpidiGateway.php:23
+msgid "Customer"
+msgstr "Cliente"
+
+#: src/Payments/MappingIndicator.php:36
+msgid "Mapped to a Cachicamo payment method"
+msgstr "Vinculado a un método de pago de Cachicamo"
+
+#: src/Payments/MappingIndicator.php:37
+msgid "Not mapped to any Cachicamo payment method"
+msgstr "No vinculado a ningún método de pago de Cachicamo"
