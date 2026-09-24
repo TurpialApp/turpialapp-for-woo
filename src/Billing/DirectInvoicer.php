@@ -53,7 +53,7 @@ class DirectInvoicer {
 
 		$client             = Plugin::instance()->service( 'api_client' );
 		$order_currency_iso = get_woocommerce_currency();
-		$rate_date          = $order->get_meta( '_cachicamo_rate_date' );
+		$rate_date          = \Cachicamo\WooCommerce\Checkout\OrderMeta::rate_date_for( $order );
 
 		$body = array(
 			'document_type'         => 'INVOICE',
@@ -284,7 +284,7 @@ class DirectInvoicer {
 		if ( ! empty( $async_payment_uuid ) ) {
 			$payment['async_payment_uuid'] = $async_payment_uuid;
 		}
-		$rate_date = $order->get_meta( '_cachicamo_rate_date' );
+		$rate_date = \Cachicamo\WooCommerce\Checkout\OrderMeta::rate_date_for( $order );
 		if ( ! empty( $rate_date ) ) {
 			$payment['rate_date'] = $rate_date;
 		}

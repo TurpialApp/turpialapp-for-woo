@@ -37,8 +37,8 @@ class OrderMeta {
 
 		if ( null !== $store_meta && '' !== $store_meta['uuid'] ) {
 			$order->update_meta_data( self::META_RATE_UUID, $store_meta['uuid'] );
-			$order->update_meta_data( self::META_RATE_DATE, self::to_date( $store_meta['created_at'] ) );
 		}
+		$order->update_meta_data( self::META_RATE_DATE, self::rate_date_for( $order ) );
 
 		$mapping    = Repository::get( 'payment_mapping', array() );
 		$gateway_id = $order->get_payment_method();
@@ -58,11 +58,16 @@ class OrderMeta {
 		$order->save();
 	}
 
-	private static function to_date( $datetime ) {
-		if ( '' === $datetime ) {
-			return gmdate( 'Y-m-d' );
+	/**
+	 * The order is priced at the rate of the day it was placed, in the store's timezone, so the
+	 * invoice keeps that rate however many days later it is issued.
+	 */
+	public static function rate_date_for( \WC_Order $order ) {
+		$stored = (string) $order->get_meta( self::META_RATE_DATE );
+		if ( 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $stored ) ) {
+			return $stored;
 		}
-		$timestamp = strtotime( $datetime );
-		return false !== $timestamp ? gmdate( 'Y-m-d', $timestamp ) : gmdate( 'Y-m-d' );
+		$created = $order->get_date_created();
+		return null !== $created ? $created->date( 'Y-m-d' ) : wp_date( 'Y-m-d' );
 	}
 }
