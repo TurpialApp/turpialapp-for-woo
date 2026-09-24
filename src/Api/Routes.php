@@ -99,6 +99,10 @@ class Routes {
 		return '/products/bulk/json';
 	}
 
+	public static function products_uuid( $uuid ) {
+		return '/products/uuid/' . rawurlencode( $uuid );
+	}
+
 	public static function products_bulk_xlsx_status( $uuid ) {
 		return '/products/bulk/xlsx/uuid/' . rawurlencode( $uuid );
 	}

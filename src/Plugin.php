@@ -82,6 +82,7 @@ class Plugin {
 		\Cachicamo\WooCommerce\Account\Status::register_hooks();
 		\Cachicamo\WooCommerce\Admin\Menu::register_hooks();
 		\Cachicamo\WooCommerce\Admin\CatalogScreen::register_hooks();
+		\Cachicamo\WooCommerce\Admin\ProductImageActions::register_hooks();
 		\Cachicamo\WooCommerce\Webhooks\Handlers::register();
 
 		\Cachicamo\WooCommerce\Jobs\BatchRunner::register_handler(
