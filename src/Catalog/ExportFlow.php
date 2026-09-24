@@ -5,6 +5,7 @@ namespace Cachicamo\WooCommerce\Catalog;
 use Cachicamo\WooCommerce\Api\Routes;
 use Cachicamo\WooCommerce\Jobs\RunHandler;
 use Cachicamo\WooCommerce\Plugin;
+use Cachicamo\WooCommerce\Pricing\TaxCatalog;
 use Cachicamo\WooCommerce\Settings\Repository;
 
 defined( 'ABSPATH' ) || exit;
@@ -152,7 +153,30 @@ class ExportFlow implements RunHandler {
 			'sale_price'         => $product->get_sale_price(),
 			'linked_uuid'        => Links::get_uuid( $product->get_id() ),
 			'existing_sku_list'  => array(),
+			'tax_percentage'     => self::tax_percentage_for( $product ),
 		);
+	}
+
+	/**
+	 * A WooCommerce tax class only carries a Cachicamo tax percentage when it was created by
+	 * TaxCatalog::sync_woocommerce_tax_classes() for one of the account's IVA taxes; any other
+	 * class (including WooCommerce's own "Standard") has no Cachicamo tax to report, so the
+	 * item is sent without tax_percentage and the core's own validation rejects it.
+	 *
+	 * @return float|null
+	 */
+	private static function tax_percentage_for( $product ) {
+		if ( 'taxable' !== $product->get_tax_status() ) {
+			return null;
+		}
+
+		$tax_class = $product->get_tax_class();
+		foreach ( TaxCatalog::all() as $tax ) {
+			if ( sanitize_title( TaxCatalog::tax_class_name( $tax ) ) === $tax_class ) {
+				return $tax['tax_rate'];
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -199,21 +223,32 @@ class ExportFlow implements RunHandler {
 			);
 		$price_tiers[ $price_type ] = $price;
 
+		$type = isset( $product_data['is_variation'] ) && $product_data['is_variation']
+			? 'VARIATION'
+			: ( isset( $product_data['is_variable'] ) && $product_data['is_variable'] ? 'VARIABLE' : 'SIMPLE' );
+
 		$item = array(
-			'type'     => isset( $product_data['is_variation'] ) && $product_data['is_variation']
-				? 'VARIATION'
-				: ( isset( $product_data['is_variable'] ) && $product_data['is_variable'] ? 'VARIABLE' : 'SIMPLE' ),
+			'type'     => $type,
 			'sku_list' => $sku_list,
 			'name'     => isset( $product_data['name'] ) ? $product_data['name'] : '',
 			'active'   => isset( $product_data['active'] ) ? (bool) $product_data['active'] : true,
-			'price'    => $price_tiers,
 		);
+
+		// A VARIABLE parent has no unit price of its own -- its variations carry it -- so the
+		// item omits price entirely instead of sending a fabricated 0, which the core's price
+		// batch would otherwise create as a real (and wrong) price row.
+		if ( 'VARIABLE' !== $type ) {
+			$item['price'] = $price_tiers;
+			if ( ! empty( $context['currency_iso'] ) ) {
+				$item['price']['currency_iso'] = $context['currency_iso'];
+			}
+		}
 
 		if ( null !== $linked_uuid ) {
 			$item['id'] = $linked_uuid;
 		}
-		if ( ! empty( $context['currency_iso'] ) ) {
-			$item['price']['currency_iso'] = $context['currency_iso'];
+		if ( isset( $product_data['tax_percentage'] ) && null !== $product_data['tax_percentage'] ) {
+			$item['tax_percentage'] = $product_data['tax_percentage'];
 		}
 
 		return $item;
