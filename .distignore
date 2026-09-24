@@ -5,14 +5,17 @@
 .distignore
 .wordpress-org
 .vscode
+build
 node_modules
 tests
 *.zip
 *.lock
 composer.json
 package.json
+package-lock.json
 webpack.config.js
 phpcs.xml.dist
 bin
 client
 README.md
+bash.exe.stackdump
