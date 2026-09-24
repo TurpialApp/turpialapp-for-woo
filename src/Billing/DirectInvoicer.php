@@ -297,13 +297,23 @@ class DirectInvoicer {
 	 * conversion of the mapped payment method, since the core taxes the payment in its own
 	 * currency and the plugin has to send the converted amount already inflated.
 	 *
+	 * Rounded up (never down) to 4 decimals: the core's settle tolerance is 0.01 in its own
+	 * currency, and rounding half the payment amount down can leave a residual above that
+	 * tolerance in a currency with a large exchange rate, so the invoice never closes. Rounding
+	 * up caps the overpayment at one unit of the 4th decimal of the payment currency, which
+	 * `igtf/igtf.go` taxes at zero (the taxable base is capped at what's still owed) and
+	 * `settle.go` always marks paid regardless of how large the resulting overpayment is.
+	 *
 	 * @param float $total_to_pay
 	 * @param float $currency_rate
 	 * @param float $igtf_rate
 	 * @return float
 	 */
 	public static function payment_amount( $total_to_pay, $currency_rate, $igtf_rate ) {
-		return round( $total_to_pay * $currency_rate * ( 1 + $igtf_rate ), 4 );
+		$raw = $total_to_pay * $currency_rate * ( 1 + $igtf_rate );
+		// round() to 6 decimals first absorbs float noise from the multiplication (e.g.
+		// 243543500.00000003) so it doesn't push ceil() to the next unit of the 4th decimal.
+		return ceil( round( $raw * 10000, 6 ) ) / 10000;
 	}
 
 	/**
