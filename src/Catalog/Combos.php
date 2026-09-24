@@ -78,7 +78,7 @@ class Combos {
 	}
 
 	/**
-	 * Plan 4.16: combo availability = min across components of floor(billable / proportion).
+	 * Combo availability = min across components of floor(billable / proportion).
 	 * A component with zero billable stock, or a combo with no components, is 0 available.
 	 *
 	 * @param array<string,float> $billable_by_component component_uuid => billable stock

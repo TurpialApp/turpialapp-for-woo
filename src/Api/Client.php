@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * HTTP client against the Cachicamo core. Every call goes through request(), which applies
- * the Guard, sets the standard headers and interprets the response per the plan's table 4.3.
+ * the Guard, sets the standard headers and interprets the response into a uniform result.
  */
 class Client {
 

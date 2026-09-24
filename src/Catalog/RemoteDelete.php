@@ -7,8 +7,8 @@ use Cachicamo\WooCommerce\Settings\Repository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * `product.deleted`, or `product.updated` with `active: false`, never deletes in WooCommerce
- * (plan 4.1, 4.16). `on_remote_delete` only chooses between doing nothing and drafting.
+ * `product.deleted`, or `product.updated` with `active: false`, never deletes in WooCommerce.
+ * `on_remote_delete` only chooses between doing nothing and drafting.
  */
 class RemoteDelete {
 

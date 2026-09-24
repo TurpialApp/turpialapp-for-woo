@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Writes Cachicamo's billable stock onto the linked WooCommerce product or variation. Publishes
- * `quantity_billable` / `stock_billable` only (plan 4.1); never the raw on-hand quantity.
+ * `quantity_billable` / `stock_billable` only; never the raw on-hand quantity.
  */
 class Stock {
 
@@ -32,7 +32,7 @@ class Stock {
 
 	/**
 	 * A stock event's billable field can be named `quantity_billable` or `stock_billable`
-	 * depending on the endpoint that produced it; both mean the same thing (plan 4.1).
+	 * depending on the endpoint that produced it; both mean the same thing.
 	 *
 	 * @param array<string,mixed> $payload
 	 * @return float|null

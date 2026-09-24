@@ -1,5 +1,5 @@
 /**
- * Connection wizard (plan 4.17): token -> account -> store -> reachability -> billing mode ->
+ * Connection wizard: token -> account -> store -> reachability -> billing mode ->
  * statuses/start order -> payment mapping -> webhook subscription. Each step is a POST/GET
  * against Admin\Rest; the wizard never talks to the core directly.
  */

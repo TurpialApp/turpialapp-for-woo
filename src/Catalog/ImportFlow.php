@@ -12,7 +12,7 @@ use Cachicamo\WooCommerce\Settings\Repository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Cachicamo -> WooCommerce catalog import (plan 4.16). Runs as a BatchRunner RunHandler: one
+ * Cachicamo -> WooCommerce catalog import. Runs as a BatchRunner RunHandler: one
  * page of `GET /products` per batch, 50 products written to WooCommerce per page, and the
  * matching page of `GET /inventories/simple/export/json` applied for stock and price. New
  * WooCommerce ids are linked back with `WC-{id}` via `POST /products/bulk/json` at the end of

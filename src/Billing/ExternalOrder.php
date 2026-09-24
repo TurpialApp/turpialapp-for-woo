@@ -194,8 +194,8 @@ class ExternalOrder {
 	}
 
 	/**
-	 * Pedidos en estado marcado sin `_cachicamo_invoice_uuid` de los últimos 60 días: la vía de
-	 * respaldo cuando el webhook de aviso nunca llegó. 50 pedidos por minuto, el ritmo del plan.
+	 * Orders in the marked status without `_cachicamo_invoice_uuid` from the last 60 days: the
+	 * fallback path for when the notice webhook never arrives. Processed at 50 orders per minute.
 	 */
 	public static function run_link_sweep() {
 		if ( 'external_order' !== Repository::get( 'billing_mode', '' ) ) {

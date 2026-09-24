@@ -1,5 +1,5 @@
 /**
- * Settings screen (plan 4.4) for a store already connected: billing mode, sync fields, price
+ * Settings screen for a store already connected: billing mode, sync fields, price
  * type, images, webhooks. Each field posts the whole form on save; Admin\Rest::save_settings
  * only accepts the keys in its own allow-list.
  */

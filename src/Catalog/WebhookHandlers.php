@@ -11,7 +11,7 @@ use Cachicamo\WooCommerce\Webhooks\Dispatcher;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Catalog side of the inbox (plan 4.15): incremental import from `product.*`, stock and combo
+ * Catalog side of the inbox: incremental import from `product.*`, stock and combo
  * recalculation from `stock.*`, and the remote-delete rule from `product.deleted` /
  * `product.updated` with `active: false`.
  */

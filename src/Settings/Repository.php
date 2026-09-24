@@ -5,8 +5,8 @@ namespace Cachicamo\WooCommerce\Settings;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Single point of access to the cachicamoapp_settings option. Every key from the plan's
- * settings table (4.4) has its default declared here; a caller never invents a default inline.
+ * Single point of access to the cachicamoapp_settings option. Every settings key has its
+ * default declared here; a caller never invents a default inline.
  */
 class Repository {
 

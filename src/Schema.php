@@ -5,7 +5,7 @@ namespace Cachicamo\WooCommerce;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Own tables (plan 4.6), created and upgraded with dbDelta. cachicamo_links duplicates the
+ * Own tables, created and upgraded with dbDelta. cachicamo_links duplicates the
  * _cachicamo_product_uuid meta with an index because wp_postmeta doesn't index meta_value:
  * looking up the product for an inbox event by meta would be a table scan per event.
  */

@@ -8,8 +8,8 @@ use Cachicamo\WooCommerce\Plugin;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Dry-run counters and conflicts for a flow, required by the plan before its first real run.
- * The evaluate_* methods are pure (no I/O, no WooCommerce calls) so the conflict rules are unit
+ * Dry-run counters and conflicts for a flow, required before its first real run. The
+ * evaluate_* methods are pure (no I/O, no WooCommerce calls) so the conflict rules are unit
  * tested directly; the run_* methods gather the WooCommerce/core data they need and delegate.
  */
 class Preview {

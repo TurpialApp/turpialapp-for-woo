@@ -1,5 +1,5 @@
 /**
- * Payment mapping screen (plan 4.11 "Mapeo"): one Cachicamo payment method per WooCommerce
+ * Payment mapping screen: one Cachicamo payment method per WooCommerce
  * gateway. The catalog of Cachicamo methods themselves is out of scope here (Payments\Catalog);
  * this only lists WooCommerce gateways and lets the admin type the target payment_method_uuid.
  */

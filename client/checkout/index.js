@@ -57,7 +57,7 @@ function showPaymentAmountNotice( gatewayId, totalInStoreCurrency ) {
 	const amount = convertToPaymentCurrency( totalInStoreCurrency, pluginData().storeCurrency );
 	notice.textContent = sprintf(
 		/* translators: %1$s: converted amount, %2$s: currency code. */
-		__( ' — Pagarás %1$s %2$s', 'cachicamoapp-for-woo' ),
+		__( ' — You will pay %1$s %2$s', 'cachicamoapp-for-woo' ),
 		amount.toFixed( 2 ),
 		pluginData().storeCurrency
 	);

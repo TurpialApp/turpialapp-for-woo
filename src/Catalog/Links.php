@@ -107,7 +107,7 @@ class Links {
 
 	/**
 	 * Deterministic fingerprint of the fields product.* import writes, used to discard the echo
-	 * of a webhook whose content this same plugin just wrote (plan 4.15).
+	 * of a webhook whose content this same plugin just wrote.
 	 */
 	public static function content_hash( array $fields ) {
 		ksort( $fields );
@@ -115,8 +115,8 @@ class Links {
 	}
 
 	/**
-	 * The plan's rule for which SKU of a Cachicamo sku_list represents the product outside
-	 * Cachicamo: the first one that isn't the plugin's own WC-{id} marker.
+	 * Which SKU of a Cachicamo sku_list represents the product outside Cachicamo: the first
+	 * one that isn't the plugin's own WC-{id} marker.
 	 *
 	 * @param array<int,string> $sku_list
 	 * @return string|null

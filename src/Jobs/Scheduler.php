@@ -5,7 +5,7 @@ namespace Cachicamo\WooCommerce\Jobs;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers every Action Scheduler hook in the cachicamoapp group (plan 4.5). Each callback
+ * Registers every Action Scheduler hook in the cachicamoapp group. Each callback
  * delegates into the service that will actually implement it, guarded with class_exists so
  * the schedule can be wired before that module exists.
  */

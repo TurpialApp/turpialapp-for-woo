@@ -1,6 +1,6 @@
 /**
  * One export flow's card: preview counters/conflicts, then a run button that only unlocks
- * once a preview has completed for this flow (the plan's "primera carga" gate).
+ * once a preview has completed for this flow.
  */
 import { useState } from '@wordpress/element';
 import { Button, Card, CardBody, CardHeader, Notice } from '@wordpress/components';
@@ -56,6 +56,7 @@ export default function Flow( { title, previewSlug, runSlug } ) {
 				{ preview && preview.conflicts.length > 0 && (
 					<Notice status="warning" isDismissible={ false }>
 						{ sprintf(
+							/* translators: %d: number of conflicts. */
 							__( '%d conflicts must be resolved before the first run.', 'cachicamoapp-for-woo' ),
 							preview.conflicts.length
 						) }

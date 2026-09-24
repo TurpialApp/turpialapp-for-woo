@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Product image resolution between WooCommerce and Cachicamo. A product's image set going out
  * is the featured image followed by its gallery, capped at MAX_IMAGES and filtered to
- * MIN_DIMENSION on both axes -- the same shape the core's bulk import expects and the plan's
- * table for the export flow requires. Bringing images in from Cachicamo goes through
+ * MIN_DIMENSION on both axes -- the same shape the core's bulk import expects. Bringing images
+ * in from Cachicamo goes through
  * media_sideload_image() so each attachment is deduplicated by its source URL via
  * META_SOURCE_URL, never re-downloaded twice for the same URL.
  */
@@ -83,7 +83,7 @@ class Images {
 
 	/**
 	 * Pure decision for apply_import(): whether to sideload Cachicamo's images onto the
-	 * WooCommerce product, per the plan's rule (4.4/762).
+	 * WooCommerce product.
 	 */
 	public static function should_sideload( $has_cachicamo_images, $has_woocommerce_images, $image_master, $image_overwrite, $force = false ) {
 		if ( ! $has_cachicamo_images ) {
@@ -106,12 +106,11 @@ class Images {
 	}
 
 	/**
-	 * Applies Cachicamo's image URLs onto a WooCommerce product following the plan's rule
-	 * (4.4/762): no image on the Cachicamo side leaves the product untouched here (the export
-	 * side is what carries the WooCommerce URL over, not this method); no image on the
-	 * WooCommerce side sideloads every Cachicamo URL; both sides present defer to image_master
-	 * and image_overwrite, unless $force bypasses that check for a manual "bring from Cachicamo"
-	 * action, which ignores the rule once.
+	 * Applies Cachicamo's image URLs onto a WooCommerce product: no image on the Cachicamo side
+	 * leaves the product untouched here (the export side is what carries the WooCommerce URL
+	 * over, not this method); no image on the WooCommerce side sideloads every Cachicamo URL;
+	 * both sides present defer to image_master and image_overwrite, unless $force bypasses that
+	 * check for a manual "bring from Cachicamo" action.
 	 *
 	 * @param string[] $cachicamo_urls
 	 */
