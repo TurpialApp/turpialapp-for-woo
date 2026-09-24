@@ -47,6 +47,14 @@ class Routes {
 		return '/payment_methods';
 	}
 
+	public static function async_payments_create() {
+		return '/async_payments/';
+	}
+
+	public static function async_payments_uuid( $uuid ) {
+		return '/async_payments/uuid/' . rawurlencode( $uuid );
+	}
+
 	public static function webhooks_config() {
 		return '/webhooks/config';
 	}

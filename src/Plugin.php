@@ -79,6 +79,12 @@ class Plugin {
 		CheckoutTotals::register_hooks();
 		OrderMeta::register_hooks();
 
+		\Cachicamo\WooCommerce\Payments\GatewayRegistry::register_hooks();
+		\Cachicamo\WooCommerce\Payments\Blocks\BlocksRegistration::register_hooks();
+		\Cachicamo\WooCommerce\Payments\WebhookHandlers::register();
+		\Cachicamo\WooCommerce\Payments\ThankyouPoll::register_hooks();
+		\Cachicamo\WooCommerce\Payments\MappingIndicator::register_hooks();
+
 		\Cachicamo\WooCommerce\Account\Status::register_hooks();
 		\Cachicamo\WooCommerce\Admin\Menu::register_hooks();
 		\Cachicamo\WooCommerce\Admin\CatalogScreen::register_hooks();
