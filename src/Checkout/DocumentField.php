@@ -19,7 +19,12 @@ class DocumentField {
 
 	public static function register_hooks() {
 		if ( self::uses_external_meta_key() ) {
+			// woocommerce_after_checkout_validation only fires from the legacy
+			// WC_Checkout::process_checkout(), which the Blocks Store API checkout never calls;
+			// it reaches its order through woocommerce_store_api_checkout_order_processed
+			// instead, once the field value is already saved on the order as meta.
 			add_action( 'woocommerce_after_checkout_validation', array( __CLASS__, 'validate_external_meta_key' ), 10, 2 );
+			add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'validate_external_meta_key_on_order' ) );
 			return;
 		}
 
@@ -71,6 +76,49 @@ class DocumentField {
 		}
 	}
 
+	/**
+	 * @param \WC_Order $order
+	 * @throws \Automattic\WooCommerce\StoreApi\Exceptions\RouteException When the merchant's own
+	 *         field, named by document_meta_key, is empty or fails validation.
+	 */
+	public static function validate_external_meta_key_on_order( $order ) {
+		if ( ! $order instanceof \WC_Order || ! class_exists( '\Automattic\WooCommerce\StoreApi\Exceptions\RouteException' ) ) {
+			return;
+		}
+
+		$meta_key = Repository::get( 'document_meta_key', '' );
+		$value    = self::read_order_field( $order, $meta_key );
+
+		if ( '' === trim( (string) $value ) ) {
+			throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException(
+				'cachicamo_document_missing',
+				__( 'Falta el documento de identidad.', 'cachicamoapp-for-woo' ),
+				400
+			);
+		}
+
+		if ( null === self::resolve_value( $value, $order->get_billing_country() ) ) {
+			throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException(
+				'cachicamo_document_invalid',
+				self::invalid_message(),
+				400
+			);
+		}
+	}
+
+	/**
+	 * document_meta_key names either a native WC_Order billing/shipping property (with its own
+	 * getter) or custom order meta added by another plugin; the getter is tried first since core
+	 * fields such as billing_address_1 are not stored as meta.
+	 */
+	private static function read_order_field( \WC_Order $order, $meta_key ) {
+		$getter = 'get_' . $meta_key;
+		if ( method_exists( $order, $getter ) ) {
+			return $order->{$getter}();
+		}
+		return $order->get_meta( $meta_key );
+	}
+
 	public static function register_block_field() {
 		if ( ! function_exists( 'woocommerce_register_additional_checkout_field' ) ) {
 			return;
@@ -96,13 +144,19 @@ class DocumentField {
 	 * additional-checkout-field API validates alongside the classic form's own field, so an
 	 * empty value has to report "missing" here too, matching validate_and_flag.
 	 *
+	 * The Store API's `validate_callback` only receives the field value, not the request, so the
+	 * billing country is read from the session customer instead: the Blocks checkout persists
+	 * each address field to that same session (via `/wc/store/v1/cart/update-customer`) as the
+	 * buyer fills the form, so the country picked is already there by the time this runs.
+	 *
 	 * @return \WP_Error|null
 	 */
 	public static function validate_block_field( $value ) {
 		if ( '' === trim( (string) $value ) ) {
 			return new \WP_Error( 'cachicamo_document_missing', __( 'Falta el documento de identidad.', 'cachicamoapp-for-woo' ) );
 		}
-		if ( null === self::resolve_value( $value, '' ) ) {
+		$country = function_exists( 'WC' ) && WC()->customer ? WC()->customer->get_billing_country() : '';
+		if ( null === self::resolve_value( $value, $country ) ) {
 			return new \WP_Error( 'cachicamo_document_invalid', self::invalid_message() );
 		}
 		return null;
