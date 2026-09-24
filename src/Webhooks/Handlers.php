@@ -17,6 +17,10 @@ class Handlers {
 
 	public static function handle_payment_method( $action, array $payload ) {
 		delete_transient( 'cachicamoapp_payment_catalog' );
+
+		if ( function_exists( 'as_enqueue_async_action' ) ) {
+			as_enqueue_async_action( 'cachicamoapp_refresh_payment_catalog', array(), \Cachicamo\WooCommerce\Jobs\Scheduler::GROUP );
+		}
 	}
 
 	/**

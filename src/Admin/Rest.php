@@ -243,6 +243,10 @@ class Rest {
 
 		Repository::set_many( $values );
 
+		if ( array_key_exists( 'payment_mapping', $values ) ) {
+			\Cachicamo\WooCommerce\Payments\Catalog::refresh();
+		}
+
 		return new \WP_REST_Response( self::public_settings(), 200 );
 	}
 
