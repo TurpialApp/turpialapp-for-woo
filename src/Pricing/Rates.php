@@ -72,8 +72,9 @@ class Rates {
 	 * @return array{uuid:string,created_at:string}
 	 */
 	private static function rate_meta_value( $rate ) {
+		$currency_uuid = is_array( $rate ) && isset( $rate['currency']['uuid'] ) ? (string) $rate['currency']['uuid'] : '';
 		return array(
-			'uuid'       => is_array( $rate ) && isset( $rate['uuid'] ) ? (string) $rate['uuid'] : '',
+			'uuid'       => $currency_uuid,
 			'created_at' => is_array( $rate ) && isset( $rate['created_at'] ) ? (string) $rate['created_at'] : '',
 		);
 	}
