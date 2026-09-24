@@ -126,4 +126,8 @@ class Routes {
 	public static function products_attribute( $attribute_group_uuid ) {
 		return '/products/attribute/' . rawurlencode( $attribute_group_uuid );
 	}
+
+	public static function prices_product( $product_uuid ) {
+		return '/prices/product/' . rawurlencode( $product_uuid );
+	}
 }

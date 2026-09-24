@@ -40,6 +40,9 @@ class ExportFlow implements RunHandler {
 
 		$items = array();
 		foreach ( $products as $product_data ) {
+			if ( isset( $product_data['linked_uuid'] ) && null !== $product_data['linked_uuid'] ) {
+				$product_data['current_price'] = self::fetch_current_price( $client, $product_data['linked_uuid'] );
+			}
 			$items[] = self::build_product_item( $product_data, $context );
 		}
 
@@ -154,11 +157,13 @@ class ExportFlow implements RunHandler {
 
 	/**
 	 * Pure (no I/O). Maps one WooCommerce product row to a ProductBulkJSONItem, keeping every
-	 * SKU already in Cachicamo (Links::merge_sku_list). Price is present-or-absent as a whole
-	 * on the core's contract, so the two tiers WooCommerce doesn't know about mirror the one it
-	 * does instead of being zeroed out.
+	 * SKU already in Cachicamo (Links::merge_sku_list). Price is present-or-absent as a whole on
+	 * the core's contract: a product already linked to Cachicamo keeps its other two tiers as
+	 * they are today (`current_price`, read by the caller from `GET /prices/product/{uuid}`
+	 * before this is called) and only the configured `price_type` tier mirrors WooCommerce; a
+	 * product not linked yet has no prior tiers to preserve, so all three start equal.
 	 *
-	 * @param array<string,mixed> $product_data
+	 * @param array<string,mixed> $product_data {..., linked_uuid?, current_price?:array{base,wholesale,retail,currency_iso}}
 	 * @param array<string,mixed> $context {price_type?, unit_price_decimals?, currency_iso?}
 	 */
 	public static function build_product_item( array $product_data, array $context ) {
@@ -177,6 +182,23 @@ class ExportFlow implements RunHandler {
 		$price      = null !== $sale_price ? $sale_price : ( isset( $product_data['regular_price'] ) ? (float) $product_data['regular_price'] : 0.0 );
 		$price      = round( $price, $decimals );
 
+		$current_price = isset( $product_data['current_price'] ) && is_array( $product_data['current_price'] )
+			? $product_data['current_price']
+			: null;
+
+		$price_tiers = null !== $current_price
+			? array(
+				'base'      => $current_price['base'],
+				'wholesale' => $current_price['wholesale'],
+				'retail'    => $current_price['retail'],
+			)
+			: array(
+				'base'      => $price,
+				'wholesale' => $price,
+				'retail'    => $price,
+			);
+		$price_tiers[ $price_type ] = $price;
+
 		$item = array(
 			'type'     => isset( $product_data['is_variation'] ) && $product_data['is_variation']
 				? 'VARIATION'
@@ -184,13 +206,8 @@ class ExportFlow implements RunHandler {
 			'sku_list' => $sku_list,
 			'name'     => isset( $product_data['name'] ) ? $product_data['name'] : '',
 			'active'   => isset( $product_data['active'] ) ? (bool) $product_data['active'] : true,
-			'price'    => array(
-				'base'      => $price,
-				'wholesale' => $price,
-				'retail'    => $price,
-			),
+			'price'    => $price_tiers,
 		);
-		$item['price'][ $price_type ] = $price;
 
 		if ( null !== $linked_uuid ) {
 			$item['id'] = $linked_uuid;
@@ -200,6 +217,23 @@ class ExportFlow implements RunHandler {
 		}
 
 		return $item;
+	}
+
+	/**
+	 * @return array{base:float,wholesale:float,retail:float}|null
+	 */
+	private static function fetch_current_price( $client, $product_uuid ) {
+		$response = $client->request( 'GET', Routes::prices_product( $product_uuid ) );
+		if ( ! $response['ok'] || ! isset( $response['body']['amount_base'] ) ) {
+			return null;
+		}
+
+		$body = $response['body'];
+		return array(
+			'base'      => ( (float) $body['amount_base'] ) / 10000,
+			'wholesale' => ( (float) $body['amount_min_sale'] ) / 10000,
+			'retail'    => ( (float) $body['amount_retail'] ) / 10000,
+		);
 	}
 
 	private static function store_links_from_result( array $wc_ids, array $result_items ) {
@@ -212,9 +246,19 @@ class ExportFlow implements RunHandler {
 	}
 
 	public static function export_context() {
+		$decimals = 2;
+		$client   = Plugin::instance()->service( 'api_client' );
+		if ( null !== $client ) {
+			$response = $client->request( 'GET', Routes::users_configuration() );
+			if ( $response['ok'] && isset( $response['body']['unit_price_decimals'] ) ) {
+				$decimals = (int) $response['body']['unit_price_decimals'];
+			}
+		}
+
 		return array(
 			'price_type'          => Repository::get( 'price_type', 'retail' ),
-			'unit_price_decimals' => 2,
+			'unit_price_decimals' => $decimals,
+			'currency_iso'        => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : null,
 		);
 	}
 }
