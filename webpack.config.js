@@ -6,6 +6,7 @@ module.exports = {
 	entry: {
 		admin: path.resolve( __dirname, 'client/admin/index.js' ),
 		checkout: path.resolve( __dirname, 'client/checkout/index.js' ),
+		catalog: path.resolve( __dirname, 'client/catalog/index.js' ),
 	},
 	output: {
 		...defaultConfig.output,

@@ -114,4 +114,16 @@ class Routes {
 	public static function inventories_batch_sku() {
 		return '/inventories/batch/sku';
 	}
+
+	public static function products_attribute_group() {
+		return '/products/attribute_group';
+	}
+
+	public static function products_attribute_group_all() {
+		return '/products/attribute_group/all';
+	}
+
+	public static function products_attribute( $attribute_group_uuid ) {
+		return '/products/attribute/' . rawurlencode( $attribute_group_uuid );
+	}
 }
