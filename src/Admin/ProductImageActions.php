@@ -168,20 +168,34 @@ class ProductImageActions {
 		}
 
 		$images = Images::for_export( $product );
+		$type   = $product->is_type( 'variation' ) ? 'VARIATION' : ( $product->is_type( 'variable' ) ? 'VARIABLE' : 'SIMPLE' );
 
 		/** @var Client $client */
 		$client = Plugin::instance()->service( 'api_client' );
+
+		$item = array(
+			'id'     => $uuid,
+			'type'   => $type,
+			'images' => $images,
+		);
+
+		// A SIMPLE/VARIABLE product has no parent, and the core requires a tax on every
+		// parent-level update -- carrying the current one over keeps this an images-only push
+		// in practice. A VARIATION's tax always comes from its parent, so it is never sent.
+		if ( 'VARIATION' !== $type ) {
+			$current = $client->request( 'GET', Routes::products_uuid( $uuid ) );
+			if ( empty( $current['ok'] ) ) {
+				return false;
+			}
+			if ( isset( $current['body']['tax']['tax_rate'] ) ) {
+				$item['tax_percentage'] = (float) $current['body']['tax']['tax_rate'];
+			}
+		}
+
 		$result = $client->request(
 			'POST',
 			Routes::products_bulk_json(),
-			array(
-				'products' => array(
-					array(
-						'id'     => $uuid,
-						'images' => $images,
-					),
-				),
-			)
+			array( 'products' => array( $item ) )
 		);
 
 		return ! empty( $result['ok'] );
