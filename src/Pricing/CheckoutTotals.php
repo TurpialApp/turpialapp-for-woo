@@ -37,13 +37,25 @@ class CheckoutTotals {
 			return;
 		}
 
-		$base   = (float) $cart->get_subtotal() + (float) $cart->get_subtotal_tax();
-		$amount = round( $base * $igtf['igtf_rate'] / 100.0, 2 );
+		$calculated = self::calculate_products_and_taxes( $cart );
+		if ( null === $calculated ) {
+			return;
+		}
+
+		$amount = self::igtf_fee_amount( $calculated['total_products'] + $calculated['total_taxes'], $igtf['igtf_rate'] );
 		if ( $amount <= 0 ) {
 			return;
 		}
 
 		$cart->add_fee( self::FEE_NAME, $amount, false );
+	}
+
+	/**
+	 * IGTF over the balance still owed: products plus the IVA Calculator computed, never
+	 * WooCommerce's native tax. Same rounding as the core's pricing/taxes.OfLine.
+	 */
+	public static function igtf_fee_amount( $balance, $igtf_rate ) {
+		return round( (float) $balance * (float) $igtf_rate / 100.0, 2 );
 	}
 
 	public static function tag_igtf_fee_item( $item, $fee_key, $fee ) {
