@@ -21,7 +21,7 @@ class CheckoutTotals {
 
 	public static function register_hooks() {
 		add_action( 'woocommerce_cart_calculate_fees', array( __CLASS__, 'add_igtf_fee' ) );
-		add_filter( 'woocommerce_checkout_create_order_fee_item', array( __CLASS__, 'tag_igtf_fee_item' ), 10, 2 );
+		add_action( 'woocommerce_checkout_create_order_fee_item', array( __CLASS__, 'tag_igtf_fee_item' ), 10, 3 );
 
 		add_filter( 'woocommerce_calculated_total', array( __CLASS__, 'override_total' ), 10, 2 );
 		add_action( 'woocommerce_after_calculate_totals', array( __CLASS__, 'override_product_taxes' ), 20 );
@@ -46,11 +46,10 @@ class CheckoutTotals {
 		$cart->add_fee( self::FEE_NAME, $amount, false );
 	}
 
-	public static function tag_igtf_fee_item( $item, $fee ) {
+	public static function tag_igtf_fee_item( $item, $fee_key, $fee ) {
 		if ( self::FEE_NAME === $fee->name ) {
 			$item->add_meta_data( '_cachicamo_charge', 'igtf' );
 		}
-		return $item;
 	}
 
 	/**
