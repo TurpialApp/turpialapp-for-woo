@@ -175,7 +175,39 @@ class Rest {
 		}
 		Repository::set_many( $values );
 
+		self::register_webhook_secret( $store_uuid, $values['webhook_secret'] ?? Repository::get( 'webhook_secret', '' ) );
+
 		return new \WP_REST_Response( array( 'ok' => true ), 200 );
+	}
+
+	/**
+	 * Registers the webhook secret against the store selected in the connection wizard, so the
+	 * core can sign the order webhooks it sends this plugin's Webhooks\Receiver. Idempotent: safe
+	 * to call again with the same secret and store, which is what a re-run of the wizard does.
+	 */
+	private static function register_webhook_secret( $store_uuid, $secret ) {
+		if ( '' === $secret ) {
+			return;
+		}
+
+		$client = Plugin::instance()->service( 'api_client' );
+		if ( null === $client ) {
+			return;
+		}
+
+		$result = $client->request( 'PUT', Routes::stores_webhook_secret( $store_uuid ), array( 'secret' => $secret ) );
+
+		update_option( 'cachicamoapp_webhook_secret_error', ! $result['ok'], false );
+	}
+
+	public static function webhook_secret_admin_notice() {
+		if ( ! get_option( 'cachicamoapp_webhook_secret_error', false ) ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-error"><p>%s</p></div>',
+			esc_html__( 'Cachicamo could not register the order webhook key with the store. Reopen the connection wizard and select the store again.', 'cachicamoapp-for-woo' )
+		);
 	}
 
 	public static function wizard_reachability() {

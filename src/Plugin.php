@@ -113,6 +113,7 @@ class Plugin {
 
 		add_action( 'rest_api_init', array( '\\Cachicamo\\WooCommerce\\Webhooks\\Receiver', 'register_routes' ) );
 		add_action( 'rest_api_init', array( '\\Cachicamo\\WooCommerce\\Admin\\Rest', 'register_routes' ) );
+		add_action( 'admin_notices', array( '\\Cachicamo\\WooCommerce\\Admin\\Rest', 'webhook_secret_admin_notice' ) );
 
 		Schema::maybe_upgrade();
 	}

@@ -67,6 +67,10 @@ class Routes {
 		return '/webhooks/store-key';
 	}
 
+	public static function stores_webhook_secret( $store_uuid ) {
+		return '/stores/uuid/' . rawurlencode( $store_uuid ) . '/woocommerce_webhook_secret';
+	}
+
 	public static function external_invoice_requests() {
 		return '/external_invoice_requests';
 	}
