@@ -154,6 +154,7 @@ class ExportFlow implements RunHandler {
 			'linked_uuid'        => Links::get_uuid( $product->get_id() ),
 			'existing_sku_list'  => array(),
 			'tax_percentage'     => self::tax_percentage_for( $product ),
+			'images'             => Images::for_export( $product ),
 		);
 	}
 
@@ -250,6 +251,10 @@ class ExportFlow implements RunHandler {
 		if ( isset( $product_data['tax_percentage'] ) && null !== $product_data['tax_percentage'] ) {
 			$item['tax_percentage'] = $product_data['tax_percentage'];
 		}
+		if ( in_array( 'images', isset( $context['sync_fields'] ) ? $context['sync_fields'] : array(), true )
+			&& ! empty( $product_data['images'] ) ) {
+			$item['images'] = $product_data['images'];
+		}
 
 		return $item;
 	}
@@ -294,6 +299,7 @@ class ExportFlow implements RunHandler {
 			'price_type'          => Repository::get( 'price_type', 'retail' ),
 			'unit_price_decimals' => $decimals,
 			'currency_iso'        => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : null,
+			'sync_fields'         => Repository::get( 'sync_fields', array() ),
 		);
 	}
 }
