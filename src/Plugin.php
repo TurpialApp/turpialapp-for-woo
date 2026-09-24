@@ -81,7 +81,17 @@ class Plugin {
 
 		\Cachicamo\WooCommerce\Account\Status::register_hooks();
 		\Cachicamo\WooCommerce\Admin\Menu::register_hooks();
+		\Cachicamo\WooCommerce\Admin\CatalogScreen::register_hooks();
 		\Cachicamo\WooCommerce\Webhooks\Handlers::register();
+
+		\Cachicamo\WooCommerce\Jobs\BatchRunner::register_handler(
+			\Cachicamo\WooCommerce\Catalog\ExportFlow::RUN_TYPE,
+			new \Cachicamo\WooCommerce\Catalog\ExportFlow()
+		);
+		\Cachicamo\WooCommerce\Jobs\BatchRunner::register_handler(
+			\Cachicamo\WooCommerce\Catalog\CategoriesExport::RUN_TYPE,
+			new \Cachicamo\WooCommerce\Catalog\CategoriesExport()
+		);
 		\Cachicamo\WooCommerce\Catalog\WebhookHandlers::register();
 
 		\Cachicamo\WooCommerce\Jobs\BatchRunner::register_handler(
