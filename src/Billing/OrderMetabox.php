@@ -60,6 +60,15 @@ class OrderMetabox {
 			echo '<p style="color:#a00;"><strong>' . esc_html__( 'Last error', 'cachicamoapp-for-woo' ) . ':</strong> ' . esc_html( $error ) . '</p>';
 		}
 
+		if ( 'external_order' === \Cachicamo\WooCommerce\Settings\Repository::get( 'billing_mode', '' ) ) {
+			$resend_url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=' . ExternalOrder::RESEND_ACTION . '&order_id=' . $order->get_id() ),
+				ExternalOrder::RESEND_ACTION . '_' . $order->get_id()
+			);
+			echo '<p><a class="button" href="' . esc_url( $resend_url ) . '">' . esc_html__( 'Resend to Cachicamo', 'cachicamoapp-for-woo' ) . '</a></p>';
+			return;
+		}
+
 		$retry_url = wp_nonce_url(
 			admin_url( 'admin-post.php?action=' . self::RETRY_ACTION . '&order_id=' . $order->get_id() ),
 			self::RETRY_ACTION . '_' . $order->get_id()

@@ -55,6 +55,22 @@ class Routes {
 		return '/webhooks/config/' . rawurlencode( $action );
 	}
 
+	public static function webhooks_store_key() {
+		return '/webhooks/store-key';
+	}
+
+	public static function external_invoice_requests() {
+		return '/external_invoice_requests';
+	}
+
+	public static function external_invoice_requests_uuid( $uuid ) {
+		return '/external_invoice_requests/' . rawurlencode( $uuid );
+	}
+
+	public static function external_invoice_requests_link_invoice( $uuid ) {
+		return '/external_invoice_requests/' . rawurlencode( $uuid ) . '/invoice';
+	}
+
 	public static function customers_search( $search ) {
 		return '/customers/search/' . rawurlencode( $search );
 	}

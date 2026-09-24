@@ -103,6 +103,7 @@ class Plugin {
 		\Cachicamo\WooCommerce\Billing\Trigger::register_hooks();
 		\Cachicamo\WooCommerce\Billing\Pdf::register_hooks();
 		\Cachicamo\WooCommerce\Billing\OrderMetabox::register_hooks();
+		\Cachicamo\WooCommerce\Billing\ExternalOrder::register_hooks();
 
 		add_action( 'rest_api_init', array( '\\Cachicamo\\WooCommerce\\Webhooks\\Receiver', 'register_routes' ) );
 		add_action( 'rest_api_init', array( '\\Cachicamo\\WooCommerce\\Admin\\Rest', 'register_routes' ) );
