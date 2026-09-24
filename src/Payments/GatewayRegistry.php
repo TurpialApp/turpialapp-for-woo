@@ -15,12 +15,18 @@ defined( 'ABSPATH' ) || exit;
  */
 class GatewayRegistry {
 
-	/** @var array<string,class-string<AbstractCachicamoGateway>> */
+	/**
+	 * Keys are the literal type strings, not the classes' own TYPE constants: reading a class
+	 * constant other than ::class forces the autoloader to load that class (and, through it,
+	 * WC_Payment_Gateway), which is_eligible() must not require just to answer a yes/no.
+	 *
+	 * @var array<string,class-string<AbstractCachicamoGateway>>
+	 */
 	const TYPE_CLASSES = array(
-		WayuPayGateway::TYPE   => WayuPayGateway::class,
-		SpidiGateway::TYPE     => SpidiGateway::class,
-		BiopagoGateway::TYPE   => BiopagoGateway::class,
-		CasheaLinkGateway::TYPE => CasheaLinkGateway::class,
+		'WAYU_PAY'    => WayuPayGateway::class,
+		'SPIDI'       => SpidiGateway::class,
+		'BDV_BIOPAGO' => BiopagoGateway::class,
+		'CASHEA_LINK' => CasheaLinkGateway::class,
 	);
 
 	public static function register_hooks() {
