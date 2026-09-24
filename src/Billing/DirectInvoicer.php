@@ -51,9 +51,9 @@ class DirectInvoicer {
 			);
 		}
 
-		$client                = Plugin::instance()->service( 'api_client' );
-		$document_currency_iso = get_woocommerce_currency();
-		$rate_date              = $order->get_meta( '_cachicamo_rate_date' );
+		$client             = Plugin::instance()->service( 'api_client' );
+		$order_currency_iso = get_woocommerce_currency();
+		$rate_date          = $order->get_meta( '_cachicamo_rate_date' );
 
 		$body = array(
 			'document_type'         => 'INVOICE',
@@ -75,8 +75,16 @@ class DirectInvoicer {
 			return self::fail( $order, 'cachicamoapp_preview_failed' );
 		}
 
-		$igtf_scaled = self::igtf_charge_scaled( $order );
-		$target      = ( (float) $order->get_total() * self::SCALE - $igtf_scaled ) / self::SCALE;
+		$document_currency_iso = self::document_currency_iso( $first_preview['body'], $order_currency_iso );
+		$igtf_scaled           = self::igtf_charge_scaled( $order );
+		$order_target          = ( (float) $order->get_total() * self::SCALE - $igtf_scaled ) / self::SCALE;
+		$target                = Reconciler::convert_target(
+			$order_target,
+			$order_currency_iso,
+			$document_currency_iso,
+			self::currency_rate( $first_preview['body'], $order_currency_iso ),
+			self::amount_raw( $first_preview['body'], 'currency_rate_invoice' )
+		);
 
 		$preview_total = self::amount( $first_preview['body'], 'total_invoice' );
 		$taxable_base  = self::amount( $first_preview['body'], 'total_products' );
@@ -108,7 +116,7 @@ class DirectInvoicer {
 		}
 
 		$total_to_pay = self::amount( $second_preview['body'], 'total_to_pay' );
-		$payment      = self::resolve_payment( $order, $total_to_pay, $document_currency_iso, $second_preview['body'] );
+		$payment      = self::resolve_payment( $order, $total_to_pay, $second_preview['body'] );
 		if ( null !== $payment ) {
 			$body['payments'] = array( $payment );
 		}
@@ -238,7 +246,7 @@ class DirectInvoicer {
 		return 0;
 	}
 
-	private static function resolve_payment( \WC_Order $order, $total_to_pay, $document_currency_iso, array $preview_body ) {
+	private static function resolve_payment( \WC_Order $order, $total_to_pay, array $preview_body ) {
 		$mapping        = Repository::get( 'payment_mapping', array() );
 		$gateway_id     = $order->get_payment_method();
 		$payment_method_uuid = isset( $mapping[ $gateway_id ] ) ? $mapping[ $gateway_id ] : '';
@@ -252,11 +260,17 @@ class DirectInvoicer {
 			: array();
 		// currency_rate_by_payment_methods is keyed by currency (its iso and its uuid), not by
 		// payment_method_uuid: a payment method carries no rate of its own, it inherits its
-		// currency's conversion against the document currency.
-		$rate = isset( $rates[ $method_taxes['currency_iso'] ] ) ? (float) $rates[ $method_taxes['currency_iso'] ] : 1.0;
+		// currency's rate against the core's base currency, the same unit convert_target uses
+		// for rate_order/rate_document -- total_to_pay is already in the document's own
+		// currency, so converting it into the method's currency divides by the document's rate
+		// and multiplies by the method's, exactly like currency/rules/convert.go:50-54.
+		$document_currency_iso = self::document_currency_iso( $preview_body, $method_taxes['currency_iso'] );
+		$rate_document         = self::amount_raw( $preview_body, 'currency_rate_invoice' );
+		$rate_method           = isset( $rates[ $method_taxes['currency_iso'] ] ) ? (float) $rates[ $method_taxes['currency_iso'] ] : $rate_document;
+		$conversion            = $document_currency_iso === $method_taxes['currency_iso'] ? 1.0 : ( $rate_method / $rate_document );
 		// TaxCatalog/PaymentTaxes carry tax_rate as a percentage (3 for 3%), payment_amount takes
 		// a fraction.
-		$amount = self::payment_amount( $total_to_pay, $rate, $method_taxes['igtf_rate'] / 100 );
+		$amount = self::payment_amount( $total_to_pay, $conversion, $method_taxes['igtf_rate'] / 100 );
 
 		$payment = array(
 			'payment_method_uuid' => $payment_method_uuid,
@@ -298,6 +312,39 @@ class DirectInvoicer {
 			return 0.0;
 		}
 		return (float) $body[ $key ] / self::SCALE;
+	}
+
+	/**
+	 * @param array<string,mixed> $body
+	 */
+	private static function amount_raw( array $body, $key ) {
+		return isset( $body[ $key ] ) ? (float) $body[ $key ] : 1.0;
+	}
+
+	/**
+	 * The document's own currency, which follows the account's invoice currency and can differ
+	 * from the order's: preview's invoice.currency.iso is the source of truth, the order's ISO
+	 * is only the fallback for a malformed preview.
+	 *
+	 * @param array<string,mixed> $body
+	 */
+	private static function document_currency_iso( array $body, $fallback_iso ) {
+		return isset( $body['invoice']['currency']['iso'] ) && '' !== $body['invoice']['currency']['iso']
+			? $body['invoice']['currency']['iso']
+			: $fallback_iso;
+	}
+
+	/**
+	 * currency_rate_by_products is keyed by currency uuid and by iso; the order's own currency
+	 * rate against the core's base is looked up by iso since the plugin never resolves the
+	 * order currency's uuid on its own.
+	 *
+	 * @param array<string,mixed> $body
+	 */
+	private static function currency_rate( array $body, $currency_iso ) {
+		return isset( $body['currency_rate_by_products'][ $currency_iso ] )
+			? (float) $body['currency_rate_by_products'][ $currency_iso ]
+			: 1.0;
 	}
 
 	private static function fail( \WC_Order $order, $error_key ) {
