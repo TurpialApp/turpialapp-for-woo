@@ -276,12 +276,26 @@ class ExportFlow implements RunHandler {
 		);
 	}
 
-	private static function store_links_from_result( array $wc_ids, array $result_items ) {
+	/**
+	 * POST /products/bulk/json answers { success: [{row, product_uuid}], errors: [{row, error}] },
+	 * both grouped by outcome rather than kept in submission order, with `row` as the 1-based
+	 * index of the product within the request. `row` is what ties a result back to the wc_id at
+	 * the same position in $wc_ids (submitted as index+1).
+	 */
+	private static function store_links_from_result( array $wc_ids, array $result ) {
+		$uuid_by_row = array();
+		foreach ( isset( $result['success'] ) ? $result['success'] : array() as $item ) {
+			if ( isset( $item['row'], $item['product_uuid'] ) && null !== $item['product_uuid'] ) {
+				$uuid_by_row[ $item['row'] ] = $item['product_uuid'];
+			}
+		}
+
 		foreach ( $wc_ids as $index => $wc_id ) {
-			if ( ! isset( $result_items[ $index ]['id'] ) ) {
+			$row = $index + 1;
+			if ( ! isset( $uuid_by_row[ $row ] ) ) {
 				continue;
 			}
-			Links::link( $wc_id, $result_items[ $index ]['id'], Links::KIND_PRODUCT );
+			Links::link( $wc_id, $uuid_by_row[ $row ], Links::KIND_PRODUCT );
 		}
 	}
 

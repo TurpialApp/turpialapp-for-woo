@@ -180,6 +180,23 @@ class ImportFlow implements RunHandler {
 	 *
 	 * @return string SIMPLE|VARIABLE|VARIATION|COMBO
 	 */
+	/**
+	 * Pure. The core's sku_list carries `WC-{id}` back-links Links::merge_sku_list() added on a
+	 * prior export; those never become the WooCommerce SKU on import, only a SKU that originated
+	 * in Cachicamo.
+	 *
+	 * @param string[] $sku_list
+	 * @return string|null
+	 */
+	public static function sku_from_list( array $sku_list ) {
+		foreach ( $sku_list as $sku ) {
+			if ( is_string( $sku ) && '' !== $sku && 0 !== strpos( $sku, 'WC-' ) ) {
+				return $sku;
+			}
+		}
+		return null;
+	}
+
 	public static function node_type( array $product_payload ) {
 		if ( ! empty( $product_payload['is_combo'] ) ) {
 			return 'COMBO';
@@ -391,6 +408,17 @@ class ImportFlow implements RunHandler {
 	}
 
 	private function apply_common_fields( $product, array $payload, array $sync_fields ) {
+		if ( isset( $payload['sku_list'] ) && is_array( $payload['sku_list'] ) ) {
+			$sku = self::sku_from_list( $payload['sku_list'] );
+			if ( null !== $sku ) {
+				try {
+					$product->set_sku( $sku );
+				} catch ( \WC_Data_Exception $exception ) {
+					// Another WooCommerce product already claims this SKU; the rest of the sync
+					// still applies instead of aborting the whole product over one field.
+				}
+			}
+		}
 		if ( in_array( 'name', $sync_fields, true ) && isset( $payload['name'] ) ) {
 			$product->set_name( $payload['name'] );
 		}

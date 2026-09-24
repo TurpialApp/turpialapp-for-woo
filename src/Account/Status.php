@@ -34,7 +34,11 @@ class Status {
 
 		$result = $client->request( 'GET', Routes::me() );
 		if ( ! $result['ok'] ) {
-			if ( 'route_not_found' === $result['error'] ) {
+			// An unregistered route and an invalid token are both dead ends no retry can fix:
+			// every write path already gates on this flag, so an invalid token halts them the
+			// same way a missing route does, instead of leaving is_writable() true while every
+			// call keeps failing with 401.
+			if ( in_array( $result['error'], array( 'route_not_found', 'unauthorized' ), true ) ) {
 				update_option( 'cachicamoapp_route_error', true, false );
 			}
 			return self::get();

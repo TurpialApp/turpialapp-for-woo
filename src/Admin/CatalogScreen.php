@@ -4,6 +4,7 @@ namespace Cachicamo\WooCommerce\Admin;
 
 use Cachicamo\WooCommerce\Catalog\CategoriesExport;
 use Cachicamo\WooCommerce\Catalog\ExportFlow;
+use Cachicamo\WooCommerce\Catalog\ImportFlow;
 use Cachicamo\WooCommerce\Catalog\Preview;
 use Cachicamo\WooCommerce\Jobs\BatchRunner;
 use Cachicamo\WooCommerce\Settings\Repository;
@@ -91,7 +92,7 @@ class CatalogScreen {
 
 		register_rest_route(
 			self::NAMESPACE,
-			'/catalog/run/(?P<flow>export_products|export_categories)',
+			'/catalog/run/(?P<flow>export_products|export_categories|import)',
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'run' ),
@@ -101,7 +102,7 @@ class CatalogScreen {
 
 		register_rest_route(
 			self::NAMESPACE,
-			'/catalog/state/(?P<flow>export_products|export_categories)',
+			'/catalog/state/(?P<flow>export_products|export_categories|import)',
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'state' ),
@@ -145,11 +146,14 @@ class CatalogScreen {
 		$flow = $request->get_param( 'flow' );
 
 		$first_load_done = Repository::get( 'first_load_done', array() );
-		$key             = 'export_products' === $flow ? 'export' : 'categories';
+		$key             = 'export_products' === $flow ? 'export' : ( 'import' === $flow ? 'import' : 'categories' );
 
 		if ( 'export_products' === $flow ) {
 			BatchRunner::register_handler( ExportFlow::RUN_TYPE, new ExportFlow() );
 			BatchRunner::start( ExportFlow::RUN_TYPE, ExportFlow::export_context() );
+		} elseif ( 'import' === $flow ) {
+			BatchRunner::register_handler( ImportFlow::RUN_TYPE, new ImportFlow() );
+			BatchRunner::start( ImportFlow::RUN_TYPE, array() );
 		} else {
 			BatchRunner::register_handler( CategoriesExport::RUN_TYPE, new CategoriesExport() );
 			BatchRunner::start( CategoriesExport::RUN_TYPE, array() );
@@ -163,7 +167,9 @@ class CatalogScreen {
 
 	public static function state( \WP_REST_Request $request ) {
 		$flow     = $request->get_param( 'flow' );
-		$run_type = 'export_products' === $flow ? ExportFlow::RUN_TYPE : CategoriesExport::RUN_TYPE;
+		$run_type = 'export_products' === $flow
+			? ExportFlow::RUN_TYPE
+			: ( 'import' === $flow ? ImportFlow::RUN_TYPE : CategoriesExport::RUN_TYPE );
 		$state    = BatchRunner::state( $run_type );
 
 		return new \WP_REST_Response( null === $state ? array( 'status' => BatchRunner::STATUS_IDLE ) : $state, 200 );
