@@ -11,6 +11,7 @@ const NAMESPACE = 'cachicamoapp-for-woo';
 const SETTINGS_KEY = 'cachicamoapp-for-woo_data';
 
 let lastPaymentMethod = null;
+let paymentMethodBaselineSet = false;
 
 function pluginData() {
 	return getSetting( SETTINGS_KEY, {
@@ -70,7 +71,10 @@ function removePaymentAmountNotice() {
 /**
  * WooCommerce Blocks fires no dedicated "payment method changed" event: the active method is
  * read from wc/store/payment on every store subscription tick and diffed against the previous
- * one, so a real change is only acted on once.
+ * one, so a real change is only acted on once. The store auto-selects a default gateway before
+ * the buyer touches anything; treating that first observed value as a change instead of a
+ * baseline fires extensionCartUpdate while the checkout block is still settling its own
+ * submission state, which leaves every field stuck invalid without ever posting the order.
  */
 function watchPaymentMethodChanges( wp ) {
 	if ( ! wp || ! wp.data || ! wp.data.subscribe || ! wp.data.select ) {
@@ -88,7 +92,10 @@ function watchPaymentMethodChanges( wp ) {
 			? paymentStore.getActivePaymentMethod()
 			: null;
 
-		if ( activePaymentMethod && activePaymentMethod !== lastPaymentMethod ) {
+		if ( activePaymentMethod && ! paymentMethodBaselineSet ) {
+			lastPaymentMethod = activePaymentMethod;
+			paymentMethodBaselineSet = true;
+		} else if ( activePaymentMethod && activePaymentMethod !== lastPaymentMethod ) {
 			lastPaymentMethod = activePaymentMethod;
 			extensionCartUpdate( {
 				namespace: NAMESPACE,

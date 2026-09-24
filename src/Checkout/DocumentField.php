@@ -75,22 +75,33 @@ class DocumentField {
 		if ( ! function_exists( 'woocommerce_register_additional_checkout_field' ) ) {
 			return;
 		}
+		// required stays false: the Blocks checkout enforces a native `required` attribute
+		// client side, which blocks submission with the browser's own untranslated tooltip
+		// before validate_block_field ever runs. Emptiness is reported by validate_block_field
+		// itself, so the buyer always sees Cachicamo's own localized message.
 		woocommerce_register_additional_checkout_field(
 			array(
 				'id'                => self::FIELD_ID,
 				'label'             => __( 'Documento de identidad (cédula o RIF)', 'cachicamoapp-for-woo' ),
 				'location'          => 'contact',
 				'type'              => 'text',
-				'required'          => true,
+				'required'          => false,
 				'validate_callback' => array( __CLASS__, 'validate_block_field' ),
 			)
 		);
 	}
 
 	/**
+	 * Runs for every checkout submission this field is registered on, classic included: the
+	 * additional-checkout-field API validates alongside the classic form's own field, so an
+	 * empty value has to report "missing" here too, matching validate_and_flag.
+	 *
 	 * @return \WP_Error|null
 	 */
 	public static function validate_block_field( $value ) {
+		if ( '' === trim( (string) $value ) ) {
+			return new \WP_Error( 'cachicamo_document_missing', __( 'Falta el documento de identidad.', 'cachicamoapp-for-woo' ) );
+		}
 		if ( null === self::resolve_value( $value, '' ) ) {
 			return new \WP_Error( 'cachicamo_document_invalid', self::invalid_message() );
 		}
