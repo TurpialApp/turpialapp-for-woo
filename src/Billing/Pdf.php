@@ -18,8 +18,8 @@ class Pdf {
 	const META_TARGET = '_cachicamo_pdf_target';
 
 	const REDIRECT_DEVICE_TYPES = array(
-		'digital_thefactoryhka_ve' => array( 'metadata', 'digital_the_factory_result', 'resultado', 'urlConsulta' ),
-		'unidigital_ve'            => array( 'metadata', 'unidigital_url' ),
+		'digital_thefactoryhka_ve' => array( 'digital_the_factory_result', 'resultado', 'urlConsulta' ),
+		'unidigital_ve'            => array( 'unidigital_url' ),
 	);
 
 	const STREAM_DEVICE_TYPES = array( 'sigece_ve', 'abc_ve', 'cg_ve' );
@@ -85,7 +85,8 @@ class Pdf {
 		$device_type = isset( $result['body']['printer']['device_type'] ) ? $result['body']['printer']['device_type'] : '';
 
 		if ( isset( self::REDIRECT_DEVICE_TYPES[ $device_type ] ) ) {
-			$target = self::dig( $result['body'], self::REDIRECT_DEVICE_TYPES[ $device_type ] );
+			$metadata = self::document_metadata( $result['body'] );
+			$target   = self::dig( $metadata, self::REDIRECT_DEVICE_TYPES[ $device_type ] );
 			if ( empty( $target ) ) {
 				self::not_found();
 			}
@@ -106,6 +107,25 @@ class Pdf {
 		}
 
 		self::not_found();
+	}
+
+	/**
+	 * GET /documents/uuid/{uuid} nests the issuance result under document.metadata, stored as a
+	 * JSON string rather than a decoded object.
+	 *
+	 * @param array<string,mixed> $body
+	 * @return array<string,mixed>
+	 */
+	private static function document_metadata( array $body ) {
+		$raw = isset( $body['document']['metadata'] ) ? $body['document']['metadata'] : null;
+		if ( is_array( $raw ) ) {
+			return $raw;
+		}
+		if ( is_string( $raw ) ) {
+			$decoded = json_decode( $raw, true );
+			return is_array( $decoded ) ? $decoded : array();
+		}
+		return array();
 	}
 
 	private static function dig( array $body, array $path ) {
