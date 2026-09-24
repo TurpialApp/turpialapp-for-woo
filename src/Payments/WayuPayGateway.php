@@ -17,10 +17,15 @@ class WayuPayGateway extends AbstractCachicamoGateway {
 	}
 
 	protected function extra_fields( \WC_Order $order ) {
+		$names = array();
+		foreach ( $order->get_items() as $item ) {
+			$names[] = $item->get_name();
+		}
+
 		return array(
 			/* translators: %s: order number */
 			'product_name'        => sprintf( __( 'Order #%s', 'cachicamoapp-for-woo' ), $order->get_order_number() ),
-			'product_description' => wp_strip_all_tags( implode( ', ', wp_list_pluck( $order->get_items(), 'name' ) ) ),
+			'product_description' => wp_strip_all_tags( implode( ', ', $names ) ),
 		);
 	}
 }
