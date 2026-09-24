@@ -134,4 +134,82 @@ class Attributes {
 			'incomplete' => count( $created ) < count( $values ),
 		);
 	}
+
+	/**
+	 * Cachicamo attribute group -> WooCommerce global attribute (import direction). One
+	 * `pa_*` taxonomy per group name, created once and reused by slug on every later import.
+	 *
+	 * @return string|null The `pa_*` taxonomy name, or null if the group has no usable name.
+	 */
+	public static function ensure_global_attribute( $group_name ) {
+		$name = self::resolve_group_name( $group_name );
+		if ( null === $name ) {
+			return null;
+		}
+
+		$slug     = wc_sanitize_taxonomy_name( $name );
+		$taxonomy = wc_attribute_taxonomy_name( $slug );
+
+		if ( taxonomy_exists( $taxonomy ) ) {
+			return $taxonomy;
+		}
+
+		$existing_id = wc_attribute_taxonomy_id_by_name( $taxonomy );
+		if ( ! $existing_id ) {
+			$existing_id = wc_create_attribute(
+				array(
+					'name'         => $name,
+					'slug'         => $slug,
+					'type'         => 'select',
+					'order_by'     => 'menu_order',
+					'has_archives' => false,
+				)
+			);
+		}
+
+		if ( is_wp_error( $existing_id ) || ! $existing_id ) {
+			return null;
+		}
+
+		// wc_create_attribute() doesn't register the taxonomy for the current request; the
+		// caller needs it registered right away to create terms and assign product attributes.
+		register_taxonomy(
+			$taxonomy,
+			'product',
+			array(
+				'hierarchical' => false,
+				'show_ui'      => false,
+				'query_var'    => true,
+				'rewrite'      => false,
+			)
+		);
+
+		return $taxonomy;
+	}
+
+	/**
+	 * Ensures $value exists as a term of $taxonomy, creating it if needed.
+	 *
+	 * @return string|null The term slug, or null if $value is empty.
+	 */
+	public static function ensure_term( $taxonomy, $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value ) {
+			return null;
+		}
+
+		$term = get_term_by( 'name', $value, $taxonomy );
+		if ( $term instanceof \WP_Term ) {
+			return $term->slug;
+		}
+
+		$created = wp_insert_term( $value, $taxonomy );
+		if ( is_wp_error( $created ) ) {
+			$existing = get_term_by( 'slug', sanitize_title( $value ), $taxonomy );
+			return $existing instanceof \WP_Term ? $existing->slug : null;
+		}
+
+		$term = get_term( $created['term_id'], $taxonomy );
+		return $term instanceof \WP_Term ? $term->slug : null;
+	}
 }

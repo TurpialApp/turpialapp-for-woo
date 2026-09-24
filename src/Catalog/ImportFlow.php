@@ -47,7 +47,7 @@ class ImportFlow implements RunHandler {
 
 		$products_response = $client->request(
 			'GET',
-			Routes::products(),
+			Routes::products( $page, self::PAGE_SIZE ),
 			array(),
 			array(
 				'limit'     => self::PAGE_SIZE,
@@ -67,8 +67,8 @@ class ImportFlow implements RunHandler {
 			);
 		}
 
-		$products = isset( $products_response['body']['data'] ) ? $products_response['body']['data'] : array();
-		$total    = isset( $products_response['body']['total'] ) ? (int) $products_response['body']['total'] : null;
+		$products = isset( $products_response['body']['rows'] ) ? $products_response['body']['rows'] : array();
+		$total    = isset( $products_response['body']['total_rows'] ) ? (int) $products_response['body']['total_rows'] : null;
 
 		if ( empty( $products ) ) {
 			return array(
@@ -87,21 +87,37 @@ class ImportFlow implements RunHandler {
 
 		foreach ( array_chunk( $products, 50 ) as $chunk ) {
 			foreach ( $chunk as $product_payload ) {
-				try {
-					$result = $this->upsert_product( $product_payload, $inventory_by_uuid );
-					$processed++;
-					if ( null !== $result && $result['is_new'] ) {
-						$new_links[] = array(
-							'id'       => $product_payload['uuid'],
-							'sku_list' => Links::merge_sku_list(
-								isset( $product_payload['sku_list'] ) ? $product_payload['sku_list'] : array(),
-								null,
-								$result['wc_id']
-							),
-						);
+				// GET /products nests a parent's variations under its own `variations` key
+				// instead of listing them as rows of their own; the parent is upserted first so
+				// Links::get_wc_id( parent_uuid ) resolves by the time each variation runs.
+				$nodes = array( $product_payload );
+				if ( ! empty( $product_payload['variations'] ) && is_array( $product_payload['variations'] ) ) {
+					foreach ( $product_payload['variations'] as $variation_payload ) {
+						$nodes[] = $variation_payload;
 					}
-				} catch ( \Exception $exception ) {
-					$errors[] = $exception->getMessage();
+				}
+
+				foreach ( $nodes as $node_payload ) {
+					try {
+						$result = $this->upsert_product( $node_payload, $inventory_by_uuid );
+						$processed++;
+						if ( null !== $result && $result['is_new'] ) {
+							$new_links[] = array(
+								'id'       => $node_payload['uuid'],
+								// The core's bulk JSON endpoint requires `type` on every item,
+								// update included; this is real data already known from the
+								// same payload, not a fabricated value.
+								'type'     => self::node_type( $node_payload ),
+								'sku_list' => Links::merge_sku_list(
+									isset( $node_payload['sku_list'] ) ? $node_payload['sku_list'] : array(),
+									null,
+									$result['wc_id']
+								),
+							);
+						}
+					} catch ( \Exception $exception ) {
+						$errors[] = $exception->getMessage();
+					}
 				}
 			}
 		}
@@ -139,7 +155,7 @@ class ImportFlow implements RunHandler {
 			return array();
 		}
 
-		$rows = isset( $response['body']['data'] ) ? $response['body']['data'] : array();
+		$rows = isset( $response['body']['rows'] ) ? $response['body']['rows'] : array();
 		$by_uuid = array();
 		foreach ( $rows as $row ) {
 			if ( isset( $row['product_uuid'] ) ) {
@@ -158,6 +174,25 @@ class ImportFlow implements RunHandler {
 	 * @param array<string,array<string,mixed>>   $inventory_by_uuid
 	 * @return array{wc_id:int,is_new:bool}|null
 	 */
+	/**
+	 * Pure. The ProductBulkJSONItem `type` for one Cachicamo product node, from the same fields
+	 * upsert_product() branches on.
+	 *
+	 * @return string SIMPLE|VARIABLE|VARIATION|COMBO
+	 */
+	public static function node_type( array $product_payload ) {
+		if ( ! empty( $product_payload['is_combo'] ) ) {
+			return 'COMBO';
+		}
+		if ( ! empty( $product_payload['parent_uuid'] ) ) {
+			return 'VARIATION';
+		}
+		if ( ! empty( $product_payload['with_variations'] ) ) {
+			return 'VARIABLE';
+		}
+		return 'SIMPLE';
+	}
+
 	public function upsert_product( array $product_payload, array $inventory_by_uuid = array() ) {
 		if ( ! isset( $product_payload['uuid'] ) ) {
 			return null;
@@ -172,8 +207,9 @@ class ImportFlow implements RunHandler {
 			return null;
 		}
 
-		$is_combo   = ! empty( $product_payload['is_combo'] );
-		$is_variant = ! empty( $product_payload['parent_uuid'] );
+		$is_combo    = ! empty( $product_payload['is_combo'] );
+		$is_variant  = ! empty( $product_payload['parent_uuid'] );
+		$is_variable = ! $is_combo && ! $is_variant && ! empty( $product_payload['with_variations'] );
 
 		$existing_wc_id = Links::get_wc_id( $uuid );
 		$is_new         = null === $existing_wc_id;
@@ -186,6 +222,8 @@ class ImportFlow implements RunHandler {
 				return null;
 			}
 			$wc_id = $this->upsert_variation( $existing_wc_id, $parent_wc_id, $product_payload, $sync_fields );
+		} elseif ( $is_variable ) {
+			$wc_id = $this->upsert_variable_product( $existing_wc_id, $product_payload, $sync_fields );
 		} else {
 			$wc_id = $this->upsert_simple_product( $existing_wc_id, $product_payload, $sync_fields, false );
 		}
@@ -195,6 +233,13 @@ class ImportFlow implements RunHandler {
 		}
 
 		Links::link( $wc_id, $uuid, $is_combo ? Links::KIND_COMBO : ( $is_variant ? Links::KIND_VARIATION : Links::KIND_PRODUCT ) );
+
+		if ( in_array( 'images', $sync_fields, true ) && ! empty( $product_payload['images'] ) && is_array( $product_payload['images'] ) ) {
+			$wc_product = wc_get_product( $wc_id );
+			if ( $wc_product ) {
+				Images::apply_import( $wc_product, $product_payload['images'] );
+			}
+		}
 
 		if ( $is_combo && isset( $product_payload['combo_items'] ) && is_array( $product_payload['combo_items'] ) ) {
 			Combos::set_components( $uuid, $product_payload['combo_items'] );
@@ -233,6 +278,19 @@ class ImportFlow implements RunHandler {
 		return $product->get_id();
 	}
 
+	private function upsert_variable_product( $wc_id, array $payload, array $sync_fields ) {
+		$product = null !== $wc_id ? wc_get_product( $wc_id ) : null;
+		if ( ! $product || ! $product->is_type( 'variable' ) ) {
+			$product = new \WC_Product_Variable();
+		}
+
+		$this->apply_common_fields( $product, $payload, $sync_fields );
+
+		$product->save();
+
+		return $product->get_id();
+	}
+
 	private function upsert_variation( $wc_id, $parent_wc_id, array $payload, array $sync_fields ) {
 		$variation = null !== $wc_id ? wc_get_product( $wc_id ) : null;
 		if ( ! $variation ) {
@@ -242,6 +300,10 @@ class ImportFlow implements RunHandler {
 
 		$this->apply_common_fields( $variation, $payload, $sync_fields );
 
+		if ( in_array( 'attributes', $sync_fields, true ) && isset( $payload['attributes'] ) && is_array( $payload['attributes'] ) ) {
+			$this->apply_variation_attributes( $parent_wc_id, $variation, $payload['attributes'] );
+		}
+
 		if ( in_array( 'stock', $sync_fields, true ) ) {
 			$variation->set_manage_stock( true );
 		}
@@ -249,6 +311,83 @@ class ImportFlow implements RunHandler {
 		$variation->save();
 
 		return $variation->get_id();
+	}
+
+	/**
+	 * Maps one Cachicamo attribute list ({ attribute_group: { name_group }, attributes: [{
+	 * name_attribute }] }) onto the WooCommerce variation, registering each group as a global
+	 * `pa_*` attribute on the parent (one term per distinct value, flagged for variations) the
+	 * first time it's seen.
+	 *
+	 * @param int                       $parent_wc_id
+	 * @param \WC_Product_Variation     $variation
+	 * @param array<int,array<string,mixed>> $cachicamo_attributes
+	 */
+	private function apply_variation_attributes( $parent_wc_id, $variation, array $cachicamo_attributes ) {
+		$parent = wc_get_product( $parent_wc_id );
+		if ( ! $parent ) {
+			return;
+		}
+
+		$variation_attributes = array();
+		$parent_attributes    = $parent->get_attributes();
+		$parent_changed       = false;
+
+		foreach ( $cachicamo_attributes as $entry ) {
+			$group_name = isset( $entry['attribute_group']['name_group'] ) ? $entry['attribute_group']['name_group'] : null;
+			$values     = isset( $entry['attributes'] ) && is_array( $entry['attributes'] ) ? $entry['attributes'] : array();
+			$value_name = isset( $values[0]['name_attribute'] ) ? $values[0]['name_attribute'] : null;
+
+			if ( null === $group_name || null === $value_name ) {
+				continue;
+			}
+
+			$taxonomy = Attributes::ensure_global_attribute( $group_name );
+			if ( null === $taxonomy ) {
+				continue;
+			}
+
+			$term_slug = Attributes::ensure_term( $taxonomy, $value_name );
+			if ( null === $term_slug ) {
+				continue;
+			}
+
+			wp_set_object_terms( $parent_wc_id, $term_slug, $taxonomy, true );
+
+			if ( ! isset( $parent_attributes[ $taxonomy ] ) ) {
+				$attribute = new \WC_Product_Attribute();
+				// A taxonomy attribute is only recognized as one (`is_taxonomy` = 1, options
+				// read back as term ids) when its id points at the registered `pa_*` taxonomy;
+				// without it WooCommerce stores the options as literal strings instead.
+				$attribute->set_id( wc_attribute_taxonomy_id_by_name( $taxonomy ) );
+				$attribute->set_name( $taxonomy );
+				$attribute->set_options( wp_get_object_terms( $parent_wc_id, $taxonomy, array( 'fields' => 'ids' ) ) );
+				$attribute->set_position( count( $parent_attributes ) );
+				$attribute->set_visible( true );
+				$attribute->set_variation( true );
+				$parent_attributes[ $taxonomy ] = $attribute;
+				$parent_changed                 = true;
+			} else {
+				$options = $parent_attributes[ $taxonomy ]->get_options();
+				$term    = get_term_by( 'slug', $term_slug, $taxonomy );
+				if ( $term instanceof \WP_Term && ! in_array( $term->term_id, $options, true ) ) {
+					$options[] = $term->term_id;
+					$parent_attributes[ $taxonomy ]->set_options( $options );
+					$parent_changed = true;
+				}
+			}
+
+			$variation_attributes[ $taxonomy ] = $term_slug;
+		}
+
+		if ( $parent_changed ) {
+			$parent->set_attributes( array_values( $parent_attributes ) );
+			$parent->save();
+		}
+
+		if ( ! empty( $variation_attributes ) ) {
+			$variation->set_attributes( $variation_attributes );
+		}
 	}
 
 	private function apply_common_fields( $product, array $payload, array $sync_fields ) {

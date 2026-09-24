@@ -21,8 +21,10 @@ class Combos {
 	 * Replaces a combo's component list, one row per component, keyed by (combo_uuid,
 	 * component_uuid) so a later import that resends the same combo just overwrites quantities.
 	 *
-	 * @param string                                              $combo_uuid
-	 * @param array<int,array{id:string,quantity:float}>          $components
+	 * @param string $combo_uuid
+	 * @param array<int,array{product_uuid?:string,id?:string,quantity:float}> $components As
+	 *        GET /products nests them (`product_uuid`); `id` is accepted too since it's the
+	 *        export-side field name of the same relation (ProductBulkJSONComboItem).
 	 */
 	public static function set_components( $combo_uuid, array $components ) {
 		global $wpdb;
@@ -30,14 +32,15 @@ class Combos {
 		$wpdb->delete( self::table(), array( 'combo_uuid' => $combo_uuid ), array( '%s' ) );
 
 		foreach ( $components as $component ) {
-			if ( ! isset( $component['id'], $component['quantity'] ) ) {
+			$component_uuid = isset( $component['product_uuid'] ) ? $component['product_uuid'] : ( isset( $component['id'] ) ? $component['id'] : null );
+			if ( null === $component_uuid || ! isset( $component['quantity'] ) ) {
 				continue;
 			}
 			$wpdb->insert(
 				self::table(),
 				array(
 					'combo_uuid'     => $combo_uuid,
-					'component_uuid' => $component['id'],
+					'component_uuid' => $component_uuid,
 					'quantity'       => $component['quantity'],
 				),
 				array( '%s', '%s', '%f' )
