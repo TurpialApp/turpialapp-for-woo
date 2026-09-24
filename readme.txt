@@ -48,7 +48,7 @@ Only to `api.cachicamo.app`, the Cachicamo App backend for the store's own accou
 1. Cachicamo App > Settings: connection wizard to link the store with a Cachicamo App API token.
 2. Cachicamo App > Catalog: preview and run product and category synchronization.
 3. Cachicamo App > Settings: payment method mapping between WooCommerce and Cachicamo App.
-4. Checkout with a Cachicamo App payment gateway selected.
+4. WooCommerce > Settings > Payments: the local payment gateways installed by Cachicamo App.
 
 == Changelog ==
 
