@@ -61,7 +61,7 @@ class Pdf {
 		}
 
 		$stored_token = (string) $order->get_meta( self::META_TOKEN );
-		$given_token  = (string) wp_unslash( $_GET['token'] );
+		$given_token  = sanitize_text_field( wp_unslash( $_GET['token'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- token is the capability, verified below with hash_equals().
 		if ( '' === $stored_token || ! hash_equals( $stored_token, $given_token ) ) {
 			self::not_found();
 		}
@@ -90,9 +90,13 @@ class Pdf {
 			if ( empty( $target ) ) {
 				self::not_found();
 			}
+			$host = wp_parse_url( $target, PHP_URL_HOST );
+			if ( empty( $host ) || 'https' !== wp_parse_url( $target, PHP_URL_SCHEME ) ) {
+				self::not_found();
+			}
 			$order->update_meta_data( self::META_TARGET, $target );
 			$order->save();
-			wp_safe_redirect( $target, 302 );
+			self::redirect_to_printing_house( $target, $host );
 			return;
 		}
 
@@ -102,7 +106,7 @@ class Pdf {
 				self::not_found();
 			}
 			header( 'Content-Type: application/pdf' );
-			echo $pdf['raw'];
+			echo $pdf['raw']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- binary PDF stream, not markup.
 			return;
 		}
 
@@ -137,6 +141,21 @@ class Pdf {
 			$value = $value[ $key ];
 		}
 		return $value;
+	}
+
+	/**
+	 * wp_safe_redirect() only follows the site's own host plus whatever allowed_redirect_hosts
+	 * lists; the printing house domain is only known at request time from the core's own
+	 * response, so the filter is scoped to this single redirect instead of a static allowlist.
+	 */
+	private static function redirect_to_printing_house( $target, $host ) {
+		$allow_host = function ( $hosts ) use ( $host ) {
+			$hosts[] = $host;
+			return $hosts;
+		};
+		add_filter( 'allowed_redirect_hosts', $allow_host );
+		wp_safe_redirect( $target, 302 );
+		remove_filter( 'allowed_redirect_hosts', $allow_host );
 	}
 
 	private static function not_found() {

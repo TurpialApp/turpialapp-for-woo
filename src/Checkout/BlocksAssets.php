@@ -31,8 +31,31 @@ class BlocksAssets implements IntegrationInterface {
 						$integration_registry->register( new self() );
 					}
 				);
+
+				if ( function_exists( 'woocommerce_store_api_register_update_callback' ) ) {
+					woocommerce_store_api_register_update_callback(
+						array(
+							'namespace' => 'cachicamoapp-for-woo',
+							'callback'  => array( __CLASS__, 'update_chosen_payment_method' ),
+						)
+					);
+				}
 			}
 		);
+	}
+
+	/**
+	 * CheckoutTotals reads chosen_payment_method from the session to price IGTF; the blocks
+	 * checkout has no server round trip on gateway change outside of this Store API callback,
+	 * so client/checkout/index.js pushes the newly selected gateway here to force a recalc.
+	 *
+	 * @param array<string,mixed> $data
+	 */
+	public static function update_chosen_payment_method( $data ) {
+		if ( ! isset( $data['payment_method'] ) || ! function_exists( 'WC' ) || ! WC()->session ) {
+			return;
+		}
+		WC()->session->set( 'chosen_payment_method', sanitize_text_field( $data['payment_method'] ) );
 	}
 
 	public function get_name() {

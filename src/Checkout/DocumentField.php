@@ -46,12 +46,12 @@ class DocumentField {
 	}
 
 	public static function validate_classic_field( $data, $errors ) {
-		$raw = isset( $_POST['billing_cachicamo_document'] ) ? wp_unslash( $_POST['billing_cachicamo_document'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$raw = isset( $_POST['billing_cachicamo_document'] ) ? sanitize_text_field( wp_unslash( $_POST['billing_cachicamo_document'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce checkout nonce already verified before this hook fires.
 		self::validate_and_flag( $raw, $data['billing_country'] ?? '', $errors );
 	}
 
 	public static function save_classic_field( $order, $data ) {
-		$raw        = isset( $_POST['billing_cachicamo_document'] ) ? wp_unslash( $_POST['billing_cachicamo_document'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$raw        = isset( $_POST['billing_cachicamo_document'] ) ? sanitize_text_field( wp_unslash( $_POST['billing_cachicamo_document'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce checkout nonce already verified before this hook fires.
 		$normalized = self::resolve_value( $raw, $order->get_billing_country() );
 		if ( null !== $normalized ) {
 			$order->update_meta_data( self::META_KEY, $normalized );
