@@ -85,11 +85,12 @@ abstract class AbstractCachicamoGateway extends \WC_Payment_Gateway {
 			return $this->fail_with_notice( $order );
 		}
 
-		$body = array(
-			'payment_method_uuid'  => $this->payment_method_uuid,
-			'origin_total_payment' => $amount,
-			'order_reference'      => Repository::get( 'store_uuid', '' ) . ':' . $order->get_id(),
-			'extra_fields'         => $this->extra_fields( $order ),
+		$body = RequestBodyBuilder::build(
+			$this->payment_method_uuid,
+			$amount,
+			Repository::get( 'store_uuid', '' ),
+			$order->get_id(),
+			$this->extra_fields( $order )
 		);
 
 		$result = $client->request( 'POST', Routes::async_payments_create(), $body );

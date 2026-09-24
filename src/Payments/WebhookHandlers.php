@@ -28,13 +28,34 @@ class WebhookHandlers {
 			return;
 		}
 
-		if ( 'accredited' === $status ) {
+		$transition = self::transition_for_status( $status );
+		if ( self::TRANSITION_COMPLETE === $transition ) {
 			if ( ! $order->is_paid() ) {
 				$order->payment_complete();
 			}
-		} elseif ( 'rejected' === $status ) {
+		} elseif ( self::TRANSITION_FAILED === $transition ) {
 			$order->update_status( 'failed' );
 		}
+	}
+
+	const TRANSITION_COMPLETE = 'complete';
+	const TRANSITION_FAILED   = 'failed';
+
+	/**
+	 * Pure mapping from an async_payment status to the order transition it drives, kept apart
+	 * from handle() so it is testable without a \WC_Order.
+	 *
+	 * @return string|null One of the TRANSITION_* constants, or null for a status that leaves
+	 * the order untouched (still pending, or any status not yet handled).
+	 */
+	public static function transition_for_status( $status ) {
+		if ( 'accredited' === $status ) {
+			return self::TRANSITION_COMPLETE;
+		}
+		if ( 'rejected' === $status ) {
+			return self::TRANSITION_FAILED;
+		}
+		return null;
 	}
 
 	private static function order_from_reference( $order_reference ) {

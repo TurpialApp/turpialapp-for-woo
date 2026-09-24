@@ -105,7 +105,7 @@ class GatewayRegistry {
 	/**
 	 * @param array<string,mixed> $row
 	 */
-	private static function is_eligible( array $row, $store_uuid ) {
+	public static function is_eligible( array $row, $store_uuid ) {
 		$type = isset( $row['type'] ) ? (string) $row['type'] : '';
 		if ( ! isset( self::TYPE_CLASSES[ $type ] ) ) {
 			return false;
