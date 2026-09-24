@@ -106,15 +106,25 @@ class ExternalOrder {
 		update_option( self::OPTION_WEBHOOK_IDS, $webhook_ids, false );
 		Repository::set( 'external_order_webhook_secret', $secret );
 
-		// The core signs nothing back for it to verify against unless the same secret also lives
-		// in stores.extra_fields.woocommerce_webhook_secret; StoreUpdateBody only carries `name`
-		// (models/Stores/stores.go:94-96), so there is no endpoint that accepts extra_fields
-		// today. The webhooks above still deliver and the core still ingests them -- an
-		// unconfigured secret is accepted as-is (controllers/WebhooksController/woocommerce.go:99)
-		// -- only the signature check never turns on from this side.
+		// The core only verifies a WooCommerce webhook's signature against this same value once
+		// it lives in stores.extra_fields.woocommerce_webhook_secret; until this PUT succeeds the
+		// webhooks above still deliver and the core still ingests them (an unconfigured secret is
+		// accepted as-is), only the signature check stays off.
+		$store_uuid    = Repository::get( 'store_uuid', '' );
+		$secret_result = '' !== $store_uuid
+			? $client->request( 'PUT', Routes::stores_webhook_secret( $store_uuid ), array( 'secret' => $secret ) )
+			: array( 'ok' => false );
+
+		if ( ! $secret_result['ok'] ) {
+			return array(
+				'ok'    => true,
+				'error' => 'secret_not_persisted_on_core',
+			);
+		}
+
 		return array(
 			'ok'    => true,
-			'error' => 'secret_not_persisted_on_core',
+			'error' => null,
 		);
 	}
 
