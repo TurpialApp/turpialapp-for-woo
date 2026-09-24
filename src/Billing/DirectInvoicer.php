@@ -78,12 +78,14 @@ class DirectInvoicer {
 		$document_currency_iso = self::document_currency_iso( $first_preview['body'], $order_currency_iso );
 		$igtf_scaled           = self::igtf_charge_scaled( $order );
 		$order_target          = ( (float) $order->get_total() * self::SCALE - $igtf_scaled ) / self::SCALE;
+		$rate_order            = self::currency_rate( $first_preview['body'], $order_currency_iso );
+		$rate_document         = self::amount_raw( $first_preview['body'], 'currency_rate_invoice' );
 		$target                = Reconciler::convert_target(
 			$order_target,
 			$order_currency_iso,
 			$document_currency_iso,
-			self::currency_rate( $first_preview['body'], $order_currency_iso ),
-			self::amount_raw( $first_preview['body'], 'currency_rate_invoice' )
+			$rate_order,
+			$rate_document
 		);
 
 		$preview_total = self::amount( $first_preview['body'], 'total_invoice' );
@@ -98,10 +100,11 @@ class DirectInvoicer {
 			if ( null === $exempt ) {
 				return self::fail( $order, 'cachicamoapp_no_exempt_tax_configured' );
 			}
+			$adjustment_amount = self::amount_in_order_currency( $plan['amount'], $order_currency_iso, $document_currency_iso, $rate_order, $rate_document );
 			$body['products'][] = array(
 				'custom_product_name' => 'Ajuste',
-				'custom_unit_price'   => (int) round( $plan['amount'] * self::SCALE ),
-				'custom_currency_uuid' => self::currency_uuid( $document_currency_iso ),
+				'custom_unit_price'   => (int) round( $adjustment_amount * self::SCALE ),
+				'custom_currency_uuid' => self::currency_uuid( $order_currency_iso ),
 				'qty'                 => 1,
 				'taxes_uuid'          => array( $exempt['uuid'] ),
 			);
@@ -301,6 +304,15 @@ class DirectInvoicer {
 	 */
 	public static function payment_amount( $total_to_pay, $currency_rate, $igtf_rate ) {
 		return round( $total_to_pay * $currency_rate * ( 1 + $igtf_rate ), 4 );
+	}
+
+	/**
+	 * The adjustment line travels in the same currency as every other product line so the core
+	 * never sees a mixed-currency request; Reconciler::reconcile works in the document's own
+	 * currency, so its amount is converted back before it is sent.
+	 */
+	private static function amount_in_order_currency( $document_amount, $order_currency_iso, $document_currency_iso, $rate_order, $rate_document ) {
+		return Reconciler::convert_target( $document_amount, $document_currency_iso, $order_currency_iso, $rate_document, $rate_order );
 	}
 
 	private static function currency_uuid( $currency_iso ) {
