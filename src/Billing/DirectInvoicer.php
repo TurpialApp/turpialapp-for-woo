@@ -246,12 +246,17 @@ class DirectInvoicer {
 			return null;
 		}
 
-		$rates      = isset( $preview_body['currency_rate_by_payment_methods'] ) && is_array( $preview_body['currency_rate_by_payment_methods'] )
+		$method_taxes = PaymentTaxes::for_payment_method( $payment_method_uuid );
+		$rates        = isset( $preview_body['currency_rate_by_payment_methods'] ) && is_array( $preview_body['currency_rate_by_payment_methods'] )
 			? $preview_body['currency_rate_by_payment_methods']
 			: array();
-		$rate       = isset( $rates[ $payment_method_uuid ] ) ? (float) $rates[ $payment_method_uuid ] : 1.0;
-		$igtf_rate  = PaymentTaxes::for_payment_method( $payment_method_uuid )['igtf_rate'];
-		$amount     = self::payment_amount( $total_to_pay, $rate, $igtf_rate );
+		// currency_rate_by_payment_methods is keyed by currency (its iso and its uuid), not by
+		// payment_method_uuid: a payment method carries no rate of its own, it inherits its
+		// currency's conversion against the document currency.
+		$rate = isset( $rates[ $method_taxes['currency_iso'] ] ) ? (float) $rates[ $method_taxes['currency_iso'] ] : 1.0;
+		// TaxCatalog/PaymentTaxes carry tax_rate as a percentage (3 for 3%), payment_amount takes
+		// a fraction.
+		$amount = self::payment_amount( $total_to_pay, $rate, $method_taxes['igtf_rate'] / 100 );
 
 		$payment = array(
 			'payment_method_uuid' => $payment_method_uuid,
