@@ -24,9 +24,8 @@ class CartHooks {
 	}
 
 	/**
-	 * woocommerce_calc_taxes stays off and prices keep carrying IVA inline (Decision F7-4a of
-	 * Investigacion/02_IGTF_DECIMALES_TASA.md): only the rounding order and the unit price
-	 * decimals are forced to match the core.
+	 * Prices keep carrying IVA inline; only the rounding order and the unit price decimals are
+	 * forced to match the core.
 	 */
 	public static function force_store_options() {
 		update_option( 'woocommerce_calc_taxes', 'yes' );
