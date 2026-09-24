@@ -96,12 +96,13 @@ class Categories {
 	}
 
 	public static function term_for_uuid( $uuid ) {
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- point lookup on a single unique meta key, capped to one result.
 		$terms = get_terms(
 			array(
 				'taxonomy'   => 'product_cat',
 				'hide_empty' => false,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- point lookup on a single unique meta key, capped to one result.
 				'meta_key'   => self::META_KEY,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- value of the same unique meta key above.
 				'meta_value' => $uuid,
 				'number'     => 1,
 				'fields'     => 'ids',

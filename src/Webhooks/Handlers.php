@@ -40,11 +40,12 @@ class Handlers {
 			return;
 		}
 
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- point lookup on a single unique meta key, capped to one result.
 		$orders = wc_get_orders(
 			array(
 				'limit'      => 1,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- point lookup on a single unique meta key, capped to one result.
 				'meta_key'   => '_cachicamo_invoice_uuid',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- value of the same unique meta key above.
 				'meta_value' => $invoice_uuid,
 				'return'     => 'ids',
 			)

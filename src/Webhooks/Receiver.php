@@ -79,7 +79,7 @@ class Receiver {
 			? (string) $payload['event_id']
 			: hash( 'sha1', $action . wp_json_encode( $payload ) . microtime() );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- inbox write, no caching layer applies to an insert.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- inbox write, no caching layer applies to an insert.
 		$wpdb->query(
 			$wpdb->prepare(
 				"INSERT IGNORE INTO {$wpdb->prefix}cachicamo_inbox (event_key, action, payload, received_at) VALUES (%s, %s, %s, %s)",
@@ -119,7 +119,7 @@ class Receiver {
 				}
 			}
 
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- inbox row consumed once dispatched, no caching layer applies to a delete.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- inbox row consumed once dispatched, no caching layer applies to a delete.
 			$wpdb->delete( "{$wpdb->prefix}cachicamo_inbox", array( 'event_key' => $row['event_key'] ) );
 		}
 
